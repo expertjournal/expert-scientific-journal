@@ -17,6 +17,7 @@ import {
   downloadManuscriptFile,
   updateArticleIssueInStore,
   searchArticlesInStore,
+  assignReviewerToArticle,
 } from "@/lib/articles-store";
 import { useSupabaseRealtime } from "@/lib/supabase-realtime";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -113,6 +114,30 @@ export default function EditorDashboard() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [targetArticleForReview, setTargetArticleForReview] = useState<ApiArticle | null>(null);
   const [reviewNoteText, setReviewNoteText] = useState("");
+
+  // Assign Reviewer Modal State
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [targetArticleForAssign, setTargetArticleForAssign] = useState<ApiArticle | null>(null);
+  const [reviewerEmailInput, setReviewerEmailInput] = useState("reviewer@expert.uz");
+  const [reviewerNoteInput, setReviewerNoteInput] = useState("");
+
+  const openAssignReviewerModal = (article: ApiArticle) => {
+    setTargetArticleForAssign(article);
+    setReviewerEmailInput(article.authors?.[0]?.author?.email || "reviewer@expert.uz");
+    setReviewerNoteInput("Просим провести независимое экспертное рецензирование статьи на предмет научной новизны и соответствия стандарту.");
+    setShowAssignModal(true);
+  };
+
+  const handleConfirmAssignReviewer = () => {
+    if (!targetArticleForAssign || !reviewerEmailInput.trim()) {
+      alert("Пожалуйста, введите email рецензента!");
+      return;
+    }
+    assignReviewerToArticle(targetArticleForAssign.id, reviewerEmailInput.trim(), reviewerNoteInput.trim());
+    setShowAssignModal(false);
+    setTargetArticleForAssign(null);
+    loadEditorData();
+  };
 
   // Messages & Author Filter & Issue Assignment State
   const [messagesList, setMessagesList] = useState<StoredMessage[]>([]);
@@ -757,9 +782,14 @@ export default function EditorDashboard() {
                                 </span>
                               </td>
                               <td style={{ padding: "8px 12px" }}>
-                                <button onClick={() => openReviewNoteModal(art)} style={{ background: "#ffffff", border: "1px solid #cbd5e1", padding: "4px 12px", borderRadius: "4px", fontSize: "11px", fontWeight: "700", cursor: "pointer", color: "#1e293b" }}>
-                                  View
-                                </button>
+                                <div style={{ display: "flex", gap: "6px" }}>
+                                  <button onClick={() => openAssignReviewerModal(art)} style={{ background: "#eff6ff", border: "1px solid #93c5fd", color: "#1d4ed8", padding: "4px 10px", borderRadius: "4px", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}>
+                                    👨‍⚖️ Рецензент
+                                  </button>
+                                  <button onClick={() => openReviewNoteModal(art)} style={{ background: "#ffffff", border: "1px solid #cbd5e1", padding: "4px 10px", borderRadius: "4px", fontSize: "11px", fontWeight: "700", cursor: "pointer", color: "#1e293b" }}>
+                                    View
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1270,6 +1300,66 @@ export default function EditorDashboard() {
             </div>
           )}
         </main>
+
+        {/* ASSIGN REVIEWER MODAL */}
+        {showAssignModal && targetArticleForAssign && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+            <div style={{ background: "#ffffff", borderRadius: "12px", width: "100%", maxWidth: "520px", padding: "28px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: 0 }}>👨‍⚖️ Назначить рецензента</h3>
+                <button onClick={() => setShowAssignModal(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#64748b" }}>✕</button>
+              </div>
+
+              <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
+                <div style={{ fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "700" }}>Рукопись:</div>
+                <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a", marginTop: "2px" }}>{targetArticleForAssign.title}</div>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
+                  Email рецензента (эксперта):
+                </label>
+                <input
+                  type="email"
+                  value={reviewerEmailInput}
+                  onChange={(e) => setReviewerEmailInput(e.target.value)}
+                  placeholder="например: reviewer@expert.uz"
+                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px", outline: "none" }}
+                />
+                <small style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "4px" }}>
+                  Укажите email зарегистрированного эксперта. Ему станет доступна эта статья в кабинете рецензента.
+                </small>
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
+                  Инструкции / Замечания для рецензента:
+                </label>
+                <textarea
+                  rows={3}
+                  value={reviewerNoteInput}
+                  onChange={(e) => setReviewerNoteInput(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "12px", outline: "none" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setShowAssignModal(false)}
+                  style={{ padding: "10px 18px", border: "1px solid #cbd5e1", background: "#fff", borderRadius: "6px", fontWeight: "700", cursor: "pointer", color: "#475569" }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleConfirmAssignReviewer}
+                  style={{ padding: "10px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", cursor: "pointer" }}
+                >
+                  ↗ Назначить и отправить
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

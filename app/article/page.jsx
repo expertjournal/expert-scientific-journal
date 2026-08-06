@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import "./article.css";
-import { getStoredArticles, syncStoreWithServer, downloadManuscriptFile } from "@/lib/articles-store";
+import { getStoredArticles, syncStoreWithServer, downloadManuscriptFile, incrementArticleViews, incrementArticleDownloads, incrementArticleCitations } from "@/lib/articles-store";
 import { useLanguage } from "@/lib/i18n-context";
 
 const R2_BUCKET_URL = "https://d4da42b4eef1d8488bfb6a00e5225637.r2.cloudflarestorage.com/expert-journal-publications";
@@ -32,7 +32,13 @@ function ArticleDetailContent() {
         await syncStoreWithServer();
         const all = getStoredArticles();
         const found = all.find((a) => a.id === articleId) || all[0];
-        setArticle(found || null);
+        if (found) {
+          const updatedList = incrementArticleViews(found.id);
+          const fresh = updatedList.find((a) => a.id === found.id) || found;
+          setArticle(fresh);
+        } else {
+          setArticle(null);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -73,8 +79,22 @@ function ArticleDetailContent() {
       ? `${article.authorName}${article.coAuthors && article.coAuthors.length > 0 ? `, & ${article.coAuthors.join(", ")}` : ""}. (2026). ${article.title}. Expert Scientific Journal. https://doi.org/${article.doi || "10.47689/expert-2026"}`
       : `${article.authorName}. "${article.title}." Expert Scientific Journal, 2026.`;
 
+  const handleDownload = () => {
+    if (article) {
+      const updatedList = incrementArticleDownloads(article.id);
+      const fresh = updatedList.find((a) => a.id === article.id);
+      if (fresh) setArticle(fresh);
+      downloadManuscriptFile(article);
+    }
+  };
+
   const copyCitation = () => {
     navigator.clipboard.writeText(citationText);
+    if (article) {
+      const updatedList = incrementArticleCitations(article.id);
+      const fresh = updatedList.find((a) => a.id === article.id);
+      if (fresh) setArticle(fresh);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -252,7 +272,7 @@ function ArticleDetailContent() {
                 <span>{article.title} (PDF)</span>
                 <span className="file-size">1.2 MB</span>
               </div>
-              <button onClick={() => downloadManuscriptFile(article)} className="btn-download-dark" style={{ border: "none", cursor: "pointer" }}>
+              <button onClick={handleDownload} className="btn-download-dark" style={{ border: "none", cursor: "pointer" }}>
                 {t.download}
               </button>
             </div>
@@ -262,7 +282,7 @@ function ArticleDetailContent() {
                 <span>{article.title} (DOCX)</span>
                 <span className="file-size">845 KB</span>
               </div>
-              <button onClick={() => downloadManuscriptFile(article)} className="btn-download-dark" style={{ border: "none", cursor: "pointer" }}>
+              <button onClick={handleDownload} className="btn-download-dark" style={{ border: "none", cursor: "pointer" }}>
                 {t.download}
               </button>
             </div>
@@ -393,7 +413,7 @@ function ArticleDetailContent() {
 
               {/* DOWNLOAD BUTTON BELOW VIEWER */}
               <button
-                onClick={() => downloadManuscriptFile(article)}
+                onClick={handleDownload}
                 className="btn-download-crimson"
                 style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", border: "none", cursor: "pointer" }}
               >
@@ -485,7 +505,7 @@ function ArticleDetailContent() {
 
               {/* Download */}
               <button
-                onClick={() => downloadManuscriptFile(article)}
+                onClick={handleDownload}
                 style={{ background: "#2563eb", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
               >
                 📥 Yuklab olish

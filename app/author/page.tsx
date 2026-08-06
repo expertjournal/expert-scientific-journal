@@ -8,6 +8,7 @@ import {
   addArticleToStore,
   getStoredMessages,
   addMessageToStore,
+  getStoredIssues,
   StoredArticle,
   StoredMessage,
   downloadManuscriptFile,
@@ -484,12 +485,22 @@ export default function AuthorDashboard() {
         </div>
         <div className="side-issue">
           <p>{t.currentIssue}</p>
-          <b>Expert</b>
-          <span>№ 7 / 2026</span>
+          <b style={{ fontSize: "13px", lineHeight: 1.2 }}>
+            {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.journalTitle || getStoredIssues()[0]?.journalTitle || "Expert Scientific Journal"}
+          </b>
+          <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+            № {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || getStoredIssues()[0]?.number || 10} / {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.year || 2026}
+          </span>
           <div className="side-cover">
-            <strong>EXPERT</strong>
-            <div />
-            <i>№ 07</i>
+            {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.coverUrl ? (
+              <img src={getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")!.coverUrl} alt="Cover" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <>
+                <strong style={{ fontSize: "11px" }}>EXPERT</strong>
+                <div />
+                <i>№ {(getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || 10) < 10 ? `0${getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || 10}` : getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || 10}</i>
+              </>
+            )}
           </div>
           <a href="/journal">{t.viewIssue} <b>→</b></a>
         </div>
@@ -538,31 +549,39 @@ export default function AuthorDashboard() {
 
         <main className="dash-content">
           {revisionRequiredArticles.length > 0 && (
-            <div style={{ background: "#fff7ed", border: "1px solid #fdba74", padding: "16px 20px", borderRadius: "8px", marginBottom: "20px" }}>
-              <h4 style={{ margin: "0 0 6px", color: "#c2410c", fontSize: "14px" }}>⚠️ Замечания Рецензента к статье</h4>
-              {revisionRequiredArticles.map((art) => (
-                <div key={art.id} style={{ fontSize: "12px", color: "#431407" }}>
-                  <b>Статья «{art.title}»:</b> {art.reviewNote}
+            <div style={{ background: "#fefce8", border: "1px solid #fef08a", borderRadius: "10px", padding: "16px 20px", marginBottom: "24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <span style={{ fontSize: "20px" }}>⚠️</span>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "800", color: "#854d0e" }}>{t.editorNotes || "Требуется исправление статьи"}</h4>
+                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#a16207" }}>
+                    Редактор отправил замечания к вашей статье: "{revisionRequiredArticles[0].title}". Нажмите «Исправить», чтобы внести правки.
+                  </p>
                 </div>
-              ))}
+              </div>
+              <button
+                onClick={() => handleOpenResubmitModal(revisionRequiredArticles[0])}
+                style={{ background: "#eab308", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", whiteSpace: "nowrap" }}
+              >
+                🔄 Исправить статью
+              </button>
             </div>
           )}
 
           {(activeTab === "dashboard" || activeTab === "Главная") && (
-            <div className="main-tab-group">
+            <div className="dash-home">
               <section className="dash-welcome">
                 <div>
-                  <p>{t.dashboard.toUpperCase()}</p>
-                  <h1>{t.welcomeBack}, {user?.firstName || "Иван"}.</h1>
-                  <span>{t.welcomeSubtitle}</span>
-                  <div className="orcid" style={{ fontSize: "11px", color: "#64748b", marginTop: "6px" }}>iD ORCID · {user?.orcid || "0009-0005-4729-1186"}</div>
+                  <h1>Рады видеть вас, {user?.firstName || "author"}.</h1>
+                  <p>Управляйте публикациями, отслеживайте статус статей и общайтесь с редакцией в одном месте.</p>
+                  <small style={{ display: "block", color: "#94a3b8", fontSize: "11px", marginTop: "4px" }}>ID ORCID · 0009-0005-4729-1186</small>
                 </div>
-                <div className="welcome-actions" style={{ display: "flex", gap: "10px" }}>
-                  <button className="dash-btn filled" onClick={() => setActiveTab("submitArticle")} style={{ background: "#c82a38", color: "#fff", border: "none", padding: "10px 18px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
-                    {t.submitNewArticle}
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button className="primary" onClick={() => setActiveTab("submitArticle")}>
+                    ↗ Подать новую статью
                   </button>
-                  <button className="dash-btn" onClick={() => setActiveTab("myArticles")} style={{ background: "#fff", border: "1px solid #cbd5e1", padding: "10px 18px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
-                    {t.myArticles} ({articles.length})
+                  <button className="secondary" onClick={() => setActiveTab("myArticles")}>
+                    Мои статьи ({articles.length})
                   </button>
                 </div>
               </section>
@@ -582,6 +601,14 @@ export default function AuthorDashboard() {
                     <span>Требуют доработки</span>
                     <strong>{revisionCount}</strong>
                     <small>Требуется действие</small>
+                  </div>
+                </div>
+                <div className="dash-stat">
+                  <i className="emerald" style={{ background: "#d1fae5", color: "#059669" }}>⚖️</i>
+                  <div>
+                    <span>Принято</span>
+                    <strong>{articles.filter((a) => a.status === "ACCEPTED").length}</strong>
+                    <small>Принято к публикации</small>
                   </div>
                 </div>
                 <div className="dash-stat">

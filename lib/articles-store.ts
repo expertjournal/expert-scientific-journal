@@ -22,6 +22,8 @@ export interface StoredArticle {
   views?: number;
   downloads?: number;
   citations?: number;
+  reviewerEmail?: string;
+  reviewerAssignedAt?: string;
 }
 
 export interface StoredIssue {
@@ -150,6 +152,75 @@ export function updateArticleStatusInStore(articleId: string, status: StoredArti
       }
     } catch (e) {}
   }
+  return updated;
+}
+
+export function incrementArticleViews(articleId: string): StoredArticle[] {
+  const current = getStoredArticles();
+  const updated = current.map((a) => {
+    if (a.id === articleId) {
+      const currentViews = typeof a.views === "number" ? a.views : 248;
+      return { ...a, views: currentViews + 1 };
+    }
+    return a;
+  });
+  saveStoredArticles(updated);
+  return updated;
+}
+
+export function incrementArticleDownloads(articleId: string): StoredArticle[] {
+  const current = getStoredArticles();
+  const updated = current.map((a) => {
+    if (a.id === articleId) {
+      const currentDownloads = typeof a.downloads === "number" ? a.downloads : 94;
+      return { ...a, downloads: currentDownloads + 1 };
+    }
+    return a;
+  });
+  saveStoredArticles(updated);
+  return updated;
+}
+
+export function incrementArticleCitations(articleId: string): StoredArticle[] {
+  const current = getStoredArticles();
+  const updated = current.map((a) => {
+    if (a.id === articleId) {
+      const currentCitations = typeof a.citations === "number" ? a.citations : 12;
+      return { ...a, citations: currentCitations + 1 };
+    }
+    return a;
+  });
+  saveStoredArticles(updated);
+  return updated;
+}
+
+export function assignReviewerToArticle(articleId: string, reviewerEmail: string, note?: string): StoredArticle[] {
+  const current = getStoredArticles();
+  const updated = current.map((a) => {
+    if (a.id === articleId) {
+      return {
+        ...a,
+        status: "UNDER_REVIEW" as const,
+        reviewerEmail,
+        reviewerAssignedAt: new Date().toISOString(),
+        reviewNote: note || a.reviewNote,
+        lastUpdated: new Date().toISOString().split("T")[0],
+      };
+    }
+    return a;
+  });
+  saveStoredArticles(updated);
+
+  addNotificationToStore({
+    id: "n-" + Date.now(),
+    userRole: "all",
+    title: "👨‍⚖️ Статья отправлена рецензенту",
+    message: `Статья отправлена на рецензирование эксперту (${reviewerEmail})`,
+    isRead: false,
+    type: "status",
+    createdAt: new Date().toISOString(),
+  });
+
   return updated;
 }
 
