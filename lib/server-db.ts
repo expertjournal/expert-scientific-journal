@@ -12,6 +12,13 @@ export interface DBUser {
   role: "author" | "editor" | "reviewer" | "admin" | "reader";
   institution?: string;
   authProvider?: "LOCAL" | "GOOGLE";
+  salt?: string;
+  hash?: string;
+  isVerified: boolean;
+  otpCode?: string;
+  otpExpiresAt?: string;
+  resetToken?: string;
+  resetTokenExpiresAt?: string;
   createdAt: string;
   lastLoginAt?: string;
 }
@@ -98,6 +105,11 @@ export function saveOrUpdateUserInDB(user: Partial<DBUser> & { email: string }):
       role: user.role || "author",
       institution: user.institution || "Expert Journal Board",
       authProvider: user.authProvider || "LOCAL",
+      isVerified: user.isVerified !== undefined ? user.isVerified : true,
+      salt: user.salt,
+      hash: user.hash,
+      otpCode: user.otpCode,
+      otpExpiresAt: user.otpExpiresAt,
       createdAt: now,
       lastLoginAt: now,
     };

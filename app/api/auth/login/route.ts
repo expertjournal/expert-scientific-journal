@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase-client";
 import { signJWT } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
+import { verifyPassword } from "@/lib/password-hasher";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const isAllowed = checkRateLimit(`login_${ip}`, 5, 15 * 60 * 1000);
+    const isAllowed = checkRateLimit(`login_${ip}`, 10, 15 * 60 * 1000);
 
     if (!isAllowed) {
       return NextResponse.json(
@@ -27,72 +27,35 @@ export async function POST(request: Request) {
 
     const normalizedEmail = (email || "").toLowerCase().trim();
 
-    // 1. Authenticate with Supabase Auth
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      });
-
-      if (!authError && authData.user) {
-        const role = (authData.user.user_metadata?.role || "author").toLowerCase();
-        const user = {
-          id: authData.user.id,
-          email: authData.user.email,
-          firstName: authData.user.user_metadata?.first_name || normalizedEmail.split("@")[0],
-          lastName: authData.user.user_metadata?.last_name || "",
-          role,
-          institution: authData.user.user_metadata?.institution || "Expert Journal Board",
-        };
-
-        const signedToken = signJWT({
-          sub: user.id,
-          email: user.email!,
-          role,
-          firstName: user.firstName,
-          lastName: user.lastName,
-        });
-
-        const response = NextResponse.json({ user });
-        response.cookies.set("expert_token", signedToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 8 * 60 * 60,
-        });
-        return response;
-      }
-    } catch (e) {
-      console.warn("Supabase auth login error:", e);
-    }
-
-    // 2. Search registered database records for user authentication
+    // 1. Search registered database records for user authentication
     const existingDbUser = findUserByEmailInDB(normalizedEmail);
 
-    let role: "author" | "editor" | "reviewer" | "admin" | "reader" = existingDbUser?.role || "author";
-    let firstName = existingDbUser?.firstName || normalizedEmail.split("@")[0] || "Пользователь";
-    let lastName = existingDbUser?.lastName || "";
-    let institution = existingDbUser?.institution || "Expert Scientific Journal Board";
-
-    if (normalizedEmail.includes("editor") || normalizedEmail.includes("redaktor")) {
-      role = "editor";
-      firstName = firstName !== normalizedEmail.split("@")[0] ? firstName : "Главный";
-      lastName = lastName || "Редактор";
-    } else if (normalizedEmail.includes("admin")) {
-      role = "admin";
-      firstName = firstName !== normalizedEmail.split("@")[0] ? firstName : "Администратор";
-      lastName = lastName || "Системы";
+    // 2. Reject unregistered emails
+    if (!existingDbUser) {
+      return NextResponse.json({ message: "Неверный Email или пароль." }, { status: 401 });
     }
 
+    // 3. Reject unverified accounts
+    if (existingDbUser.isVerified === false) {
+      return NextResponse.json(
+        { message: "Электронная почта не подтверждена. Пожалуйста, введите код подтверждения из письма." },
+        { status: 403 }
+      );
+    }
+
+    // 4. Verify password hash if present
+    if (existingDbUser.salt && existingDbUser.hash) {
+      const isValid = verifyPassword(password, existingDbUser.salt, existingDbUser.hash);
+      if (!isValid) {
+        return NextResponse.json({ message: "Неверный Email или пароль." }, { status: 401 });
+      }
+    }
+
+    // Update last login timestamp
     const savedUser = saveOrUpdateUserInDB({
-      id: existingDbUser?.id || "usr_" + Date.now(),
+      ...existingDbUser,
       email: normalizedEmail,
-      firstName,
-      lastName,
-      role,
-      institution,
-      authProvider: "LOCAL",
+      lastLoginAt: new Date().toISOString(),
     });
 
     const user = {

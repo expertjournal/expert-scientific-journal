@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { sendEmail, getVerifyEmailTemplate } from "@/lib/email-service";
+import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
+import { hashPassword } from "@/lib/password-hasher";
 
 export const dynamic = "force-dynamic";
 
@@ -17,24 +19,55 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { firstName, lastName, email } = body;
+    const { firstName, lastName, email, password } = body;
 
     const normalizedEmail = (email || "").toLowerCase().trim();
     if (!normalizedEmail || !firstName) {
       return NextResponse.json({ message: "Укажите имя и корректный email." }, { status: 400 });
     }
 
-    // Generate cryptographically secure 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Duplicate account prevention
+    const existingUser = findUserByEmailInDB(normalizedEmail);
+    if (existingUser && existingUser.isVerified) {
+      return NextResponse.json(
+        { message: "Пользователь с таким email уже зарегистрирован. Вы можете войти в систему." },
+        { status: 400 }
+      );
+    }
 
-    // Dispatch Verification Email (Resend API / SMTP)
-    const emailSent = await sendEmail({
+    // Password hashing (if password supplied)
+    let salt = existingUser?.salt;
+    let hash = existingUser?.hash;
+    if (password && password.trim().length >= 6) {
+      const hashResult = hashPassword(password);
+      salt = hashResult.salt;
+      hash = hashResult.hash;
+    }
+
+    // Generate 6-digit OTP code & expiration (15 min)
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    // Persist pending user to server DB
+    saveOrUpdateUserInDB({
+      email: normalizedEmail,
+      firstName: firstName.trim(),
+      lastName: (lastName || "").trim(),
+      role: "author",
+      isVerified: false,
+      salt,
+      hash,
+      otpCode,
+      otpExpiresAt,
+      authProvider: "LOCAL",
+    });
+
+    // Dispatch Verification Email
+    await sendEmail({
       to: normalizedEmail,
       subject: "Expert Journal — Код подтверждения электронной почты",
       html: getVerifyEmailTemplate(otpCode, `${firstName} ${lastName || ""}`.trim()),
     });
-
-    const isLiveEmailConfigured = Boolean(process.env.RESEND_API_KEY || (process.env.SMTP_HOST && process.env.SMTP_USER));
 
     return NextResponse.json({
       requiresVerification: true,

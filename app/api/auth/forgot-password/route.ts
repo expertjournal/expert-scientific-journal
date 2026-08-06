@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { sendEmail, getPasswordResetTemplate } from "@/lib/email-service";
+import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +18,35 @@ export async function POST(req: NextRequest) {
     }
 
     const { email } = await req.json();
-    if (!email) {
+    const normalizedEmail = (email || "").toLowerCase().trim();
+    if (!normalizedEmail) {
       return NextResponse.json({ message: "Укажите Email" }, { status: 400 });
     }
 
-    const resetToken = "rst_" + Math.random().toString(36).substring(2) + Date.now();
-    const resetUrl = `${req.nextUrl.origin}/reset-password?token=${resetToken}`;
+    const dbUser = findUserByEmailInDB(normalizedEmail);
+    if (!dbUser) {
+      // Return success message for security to prevent user enumeration
+      return NextResponse.json({
+        success: true,
+        message: "Инструкции по восстановлению пароля отправлены на ваш email, если аккаунт существует.",
+      });
+    }
+
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetTokenExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    saveOrUpdateUserInDB({
+      ...dbUser,
+      resetToken,
+      resetTokenExpiresAt,
+    });
+
+    const resetUrl = `${req.nextUrl.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
     await sendEmail({
-      to: email,
+      to: normalizedEmail,
       subject: "Expert Journal — Сброс пароля",
-      html: getPasswordResetTemplate(resetUrl, email.split("@")[0]),
+      html: getPasswordResetTemplate(resetUrl, `${dbUser.firstName} ${dbUser.lastName}`.trim()),
     });
 
     return NextResponse.json({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { signJWT } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rate-limiter";
-import { saveOrUpdateUserInDB } from "@/lib/server-db";
+import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +26,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Укажите корректный 6-значный код" }, { status: 400 });
     }
 
+    const existingUser = findUserByEmailInDB(normalizedEmail);
+
+    // OTP validation if stored
+    if (existingUser && existingUser.otpCode) {
+      if (existingUser.otpCode.trim() !== code.trim()) {
+        return NextResponse.json({ message: "Неверный код подтверждения." }, { status: 400 });
+      }
+      if (existingUser.otpExpiresAt && new Date(existingUser.otpExpiresAt).getTime() < Date.now()) {
+        return NextResponse.json({ message: "Срок действия кода истек. Пожалуйста, запросите новый код." }, { status: 400 });
+      }
+    }
+
     const savedDbUser = saveOrUpdateUserInDB({
       email: normalizedEmail,
-      firstName: firstName || normalizedEmail.split("@")[0] || "Автор",
-      lastName: lastName || "",
-      role: "author",
-      institution: "Expert Scientific Journal",
+      firstName: (firstName || existingUser?.firstName || normalizedEmail.split("@")[0] || "Автор").trim(),
+      lastName: (lastName || existingUser?.lastName || "").trim(),
+      role: existingUser?.role || "author",
+      isVerified: true,
+      otpCode: undefined,
+      otpExpiresAt: undefined,
+      institution: existingUser?.institution || "Expert Scientific Journal",
       authProvider: "LOCAL",
     });
 

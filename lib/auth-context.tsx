@@ -69,8 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           if (isMounted && data.user) {
-            setUser((prev) => ({ ...data.user, ...prev }));
+            setUser(data.user);
+            try {
+              localStorage.setItem("expert_user", JSON.stringify(data.user));
+            } catch (_) {}
+          } else if (isMounted) {
+            setUser(null);
+            clearAllClientCaches();
           }
+        } else if (isMounted) {
+          setUser(null);
+          clearAllClientCaches();
         }
       } catch (error) {
         console.error("Failed to rehydrate session:", error);
