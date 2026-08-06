@@ -57,89 +57,25 @@ export interface StoredNotification {
   createdAt: string;
 }
 
-const ARTICLES_KEY = "expert_shared_cloud_articles_v4";
-const ISSUES_KEY = "expert_shared_cloud_issues_v4";
-const MESSAGES_KEY = "expert_shared_cloud_messages_v4";
-const NOTIFICATIONS_KEY = "expert_shared_cloud_notifications_v4";
+const ARTICLES_KEY = "expert_shared_cloud_articles_v10_prod_clean";
+const ISSUES_KEY = "expert_shared_cloud_issues_v10_prod_clean";
+const MESSAGES_KEY = "expert_shared_cloud_messages_v10_prod_clean";
+const NOTIFICATIONS_KEY = "expert_shared_cloud_notifications_v10_prod_clean";
 
-const INITIAL_ISSUES: StoredIssue[] = [
-  {
-    id: "issue-10-2026",
-    number: 10,
-    year: 2026,
-    status: "PUBLISHED",
-    description: "Expert Scientific Journal — Выпуск № 10 (2026) по направлению Право и правовые исследования",
-    publicationDate: "2026-08-01",
-    doi: "10.47689/expert-2026-iss10",
-    journalTitle: "Expert Scientific Journal",
-  },
-  {
-    id: "issue-09-2026",
-    number: 9,
-    year: 2026,
-    status: "PUBLISHED",
-    description: "Expert Scientific Journal — Выпуск № 9 (2026)",
-    publicationDate: "2026-07-01",
-    doi: "10.47689/expert-2026-iss9",
-    journalTitle: "Expert Scientific Journal",
-  },
-];
-
-const INITIAL_ARTICLES: StoredArticle[] = [
-  {
-    id: "art-1785992644542",
-    title: "Совершенствование цифрового законодательства и правового регулирования ИИ в Узбекистане",
-    abstract: "В данной статье рассматриваются концептуальные вопросы правового регулирования цифровых технологий, искусственного интеллекта и смарт-контрактов в законодательстве Республики Узбекистан. Проводится сравнительно-правовой анализ международных стандартов и национального опыта.",
-    scientificField: "Право и правовые исследования",
-    language: "Русский",
-    keywords: ["право", "юридические науки", "законодательство", "цифровое право", "ИИ"],
-    status: "PUBLISHED",
-    submissionDate: "2026-08-01",
-    lastUpdated: "2026-08-06",
-    authorName: "Иванов Иван Иванович",
-    authorEmail: "author@expert.uz",
-    coAuthors: ["Петров А.А.", "Сидоров В.В."],
-    doi: "10.47689/expert-2026-iss10-art-1785992644542",
-    issueId: "issue-10-2026",
-    pages: "1 - 12",
-    views: 312,
-    downloads: 124,
-    citations: 18,
-  },
-  {
-    id: "art-1785992699999",
-    title: "Актуальные вопросы конституционного права и защита прав человека в современной юриспруденции",
-    abstract: "Исследование посвящено анализу конституционных гарантий прав и свобод граждан в контексте современной судебно-правовой реформы. Авторы предлагают рекомендации по развитию институтов омбудсмена и судебного контроля.",
-    scientificField: "Право и правовые исследования",
-    language: "Русский",
-    keywords: ["конституционное право", "права человека", "юриспруденция", "судебная реформа"],
-    status: "PUBLISHED",
-    submissionDate: "2026-08-02",
-    lastUpdated: "2026-08-06",
-    authorName: "Каримов Шерзод Рустамович",
-    authorEmail: "karimov@expert.uz",
-    coAuthors: ["Ахмедов Б.Т."],
-    doi: "10.47689/expert-2026-iss10-art-1785992699999",
-    issueId: "issue-10-2026",
-    pages: "13 - 26",
-    views: 245,
-    downloads: 88,
-    citations: 12,
-  },
-];
+const INITIAL_ISSUES: StoredIssue[] = [];
+const INITIAL_ARTICLES: StoredArticle[] = [];
 
 // READ & WRITE ARTICLES
 export function getStoredArticles(): StoredArticle[] {
-  if (typeof window === "undefined") return INITIAL_ARTICLES;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(ARTICLES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {}
-  saveStoredArticles(INITIAL_ARTICLES);
-  return INITIAL_ARTICLES;
+  return [];
 }
 
 export function saveStoredArticles(articles: StoredArticle[]) {
@@ -321,16 +257,15 @@ export function updateArticleIssueInStore(articleId: string, issueId: string, pa
 
 // READ & WRITE ISSUES
 export function getStoredIssues(): StoredIssue[] {
-  if (typeof window === "undefined") return INITIAL_ISSUES;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(ISSUES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {}
-  saveStoredIssues(INITIAL_ISSUES);
-  return INITIAL_ISSUES;
+  return [];
 }
 
 export function saveStoredIssues(issues: StoredIssue[]) {
