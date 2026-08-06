@@ -153,9 +153,8 @@ export default function HomePage() {
               </div>
             )}
             <div className="issue-detail">
-              <p className="issue-number">Expert № {latestIssue.number} <span>· {latestIssue.year}</span></p>
-              <h3>{latestIssue.description || "Expert Scientific Journal"}</h3>
-              <p>International Journal of Multidisciplinary Research</p>
+              <p className="issue-number">{latestIssue.journalTitle || "Expert Scientific Journal"} № {latestIssue.number} <span>· {latestIssue.year}</span></p>
+              <h3>{latestIssue.description || `Выпуск №${latestIssue.number} (${latestIssue.year})`}</h3>
               <div className="meta">
                 {latestIssue.publicationDate && (
                   <span>◷ {new Date(latestIssue.publicationDate).toLocaleDateString()}</span>

@@ -338,7 +338,7 @@ export default function EditorDashboard() {
   const openCreateIssueModal = () => {
     setEditingIssueId(null);
     setIssueNumber((issues.length + 1).toString());
-    setIssueJournalTitle("Expert Scientific Journal");
+    setIssueJournalTitle(issues[0]?.journalTitle || "Expert Scientific Journal");
     setIssueYear("2026");
     setIssueDesc(`Официальный выпуск №${issues.length + 1} (2026)`);
     setIssueCoverUrl("");
@@ -369,13 +369,14 @@ export default function EditorDashboard() {
       if (isNaN(num) || isNaN(yr)) return;
 
       const issueStatus = scheduledPublishDate ? ("SCHEDULED" as const) : ("DRAFT" as const);
+      const savedTitle = issueJournalTitle.trim() || "Expert Scientific Journal";
 
       if (editingIssueId) {
         updateIssueInStore(editingIssueId, {
           number: num,
           year: yr,
           status: issueStatus,
-          journalTitle: issueJournalTitle.trim() || undefined,
+          journalTitle: savedTitle,
           description: issueDesc || `Выпуск №${num} (${yr})`,
           coverUrl: issueCoverUrl || undefined,
           scheduledPublishDate: scheduledPublishDate || undefined,
@@ -386,7 +387,7 @@ export default function EditorDashboard() {
           number: num,
           year: yr,
           status: issueStatus,
-          journalTitle: issueJournalTitle.trim() || undefined,
+          journalTitle: savedTitle,
           description: issueDesc || `Выпуск №${num} (${yr})`,
           coverUrl: issueCoverUrl || undefined,
           scheduledPublishDate: scheduledPublishDate || undefined,

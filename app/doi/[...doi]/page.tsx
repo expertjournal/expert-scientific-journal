@@ -26,7 +26,7 @@ export default function DoiResolverPage() {
         // 1. Search in Articles by DOI or ID
         const matchedArticle = articles.find((a) => {
           const itemDoi = (a.doi || "").trim().toLowerCase();
-          return itemDoi.includes(fullDoi) || fullDoi.includes(itemDoi) || a.id.toLowerCase() === fullDoi;
+          return itemDoi && (itemDoi.includes(fullDoi) || fullDoi.includes(itemDoi) || a.id.toLowerCase() === fullDoi);
         });
 
         if (matchedArticle) {
@@ -34,18 +34,42 @@ export default function DoiResolverPage() {
           return;
         }
 
-        // 2. Search in Issues by DOI or ID
-        const matchedIssue = issues.find((i) => {
+        // 2. Search in Issues by DOI, ID, or number pattern (e.g. iss8, iss2)
+        let matchedIssue = issues.find((i) => {
           const issueDoi = (i.doi || "").trim().toLowerCase();
-          return issueDoi.includes(fullDoi) || fullDoi.includes(issueDoi) || i.id.toLowerCase() === fullDoi;
+          const issueNumDoi = `10.47689/expert-${i.year}-iss${i.number}`;
+          const issueVolDoi = `10.47689/expert-${i.year}-vol6-iss${i.number}`;
+          return (
+            (issueDoi && (issueDoi.includes(fullDoi) || fullDoi.includes(issueDoi))) ||
+            issueNumDoi.includes(fullDoi) ||
+            fullDoi.includes(issueNumDoi) ||
+            issueVolDoi.includes(fullDoi) ||
+            fullDoi.includes(issueVolDoi) ||
+            i.id.toLowerCase() === fullDoi ||
+            fullDoi.includes(`iss${i.number}`)
+          );
         });
+
+        if (!matchedIssue && (fullDoi.includes("iss") || fullDoi.includes("issue"))) {
+          const numMatch = fullDoi.match(/iss(?:ue)?[-_\s]*(\d+)/i);
+          if (numMatch && numMatch[1]) {
+            const num = parseInt(numMatch[1], 10);
+            matchedIssue = issues.find((i) => i.number === num);
+          }
+        }
 
         if (matchedIssue) {
           router.replace(`/journal?issueId=${matchedIssue.id}`);
           return;
         }
 
-        // 3. Fallback to first article if present
+        // 3. Smart fallback to latest published issue or article
+        if (issues.length > 0) {
+          const latestPub = issues.find((i) => i.status === "PUBLISHED") || issues[0];
+          router.replace(`/journal?issueId=${latestPub.id}`);
+          return;
+        }
+
         if (articles.length > 0) {
           router.replace(`/article?id=${articles[0].id}`);
           return;

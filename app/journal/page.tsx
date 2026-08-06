@@ -130,7 +130,7 @@ function JournalContent() {
               </span>
             </div>
             <h1>{activeIssue.journalTitle || "Expert Scientific Journal"}</h1>
-            <p>International Journal of Multidisciplinary Research — Issue {issueNum} ({issueYear})</p>
+            <p>{activeIssue.description || `Выпуск № ${issueNum} (${issueYear})`}</p>
 
             <div className="hero-banner-btns" style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
               <a href="#articles" className="btn-hero-white">{t.viewIssue}</a>
@@ -153,7 +153,6 @@ function JournalContent() {
                 <div className="book-face">
                   <div className="book-logo">📖</div>
                   <h3>{(activeIssue.journalTitle || "EXPERT SCIENTIFIC JOURNAL").toUpperCase()}</h3>
-                  <small>International Journal of Multidisciplinary Research</small>
                   <div className="book-vol">ISSUE {issueNum}<br />{pubDateFormatted.toUpperCase()}</div>
                 </div>
               </div>
@@ -191,7 +190,7 @@ function JournalContent() {
           {/* CURRENT ISSUE & ABOUT */}
           <div className="center-top-row">
             <div className="current-issue-box">
-              <h4>Current Issue</h4>
+              <h4>{t.currentIssueEyebrow || "Текущий выпуск"}</h4>
               <div className="current-issue-flex">
                 {activeIssue.coverUrl ? (
                   <img src={activeIssue.coverUrl} alt="Cover" className="issue-mini-thumb" />
@@ -202,13 +201,13 @@ function JournalContent() {
                   </div>
                 )}
                 <div>
-                  <h5>Issue {issueNum} ({issueYear})</h5>
+                  <h5>Выпуск № {issueNum} ({issueYear})</h5>
                   <p>{pubDateFormatted}</p>
                   <small style={{ color: "#2563eb", fontWeight: "bold", fontSize: "10px" }}>DOI: {issueDoi}</small>
-                  <div className="articles-count-tag">{searchResults.length} Articles</div>
+                  <div className="articles-count-tag">{searchResults.length} {t.articlesCountInIssue || "статей"}</div>
                   <div className="current-issue-actions">
-                    <a href="#latest" className="btn-small-dark">View Issue</a>
-                    <a href="#latest" className="btn-small-outline">Articles</a>
+                    <a href="#latest" className="btn-small-dark">{t.viewIssue || "Смотреть"}</a>
+                    <a href="#latest" className="btn-small-outline">{t.journalInfo || "Статьи"}</a>
                   </div>
                 </div>
               </div>
