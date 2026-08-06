@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 const protectedRoutes = {
   author: ["/author"],
   editor: ["/editor"],
+  reviewer: ["/reviewer"],
   reader: ["/reader"],
   admin: ["/admin"],
 };
@@ -60,6 +61,12 @@ export function middleware(request: NextRequest) {
 
       if (protectedRoutes.editor.some((route) => pathname.startsWith(route))) {
         if (userRole !== "editor" && userRole !== "admin") {
+          return NextResponse.redirect(new URL("/unauthorized", request.url));
+        }
+      }
+
+      if (protectedRoutes.reviewer.some((route) => pathname.startsWith(route))) {
+        if (userRole !== "reviewer" && userRole !== "editor" && userRole !== "admin") {
           return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
       }
