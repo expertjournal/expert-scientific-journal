@@ -95,6 +95,7 @@ export default function AuthorDashboard() {
 
   // Submission Form State (Simplified 4 steps: 1 Start/Upload, 2 Details, 3 Co-authors, 4 Review)
   const [submissionStep, setSubmissionStep] = useState(1);
+  const [stepError, setStepError] = useState("");
   const [articleType, setArticleType] = useState("Оригинальная научная статья");
   const [newTitle, setNewTitle] = useState("");
   const [newAbstract, setNewAbstract] = useState("");
@@ -104,6 +105,49 @@ export default function AuthorDashboard() {
   const [coAuthorsText, setCoAuthorsText] = useState("");
   const [manuscriptFile, setManuscriptFile] = useState<File | null>(null);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+
+  const handleNextStepClick = () => {
+    setStepError("");
+
+    if (submissionStep === 1) {
+      if (!newTitle.trim()) {
+        setStepError("⚠️ Пожалуйста, введите название вашей статьи!");
+        return;
+      }
+      if (!newAbstract.trim()) {
+        setStepError("⚠️ Пожалуйста, введите аннотацию статьи!");
+        return;
+      }
+      if (!newKeywords.trim()) {
+        setStepError("⚠️ Пожалуйста, введите ключевые слова!");
+        return;
+      }
+      if (!manuscriptFile) {
+        setStepError("⚠️ Пожалуйста, загрузите файл вашей рукописи (DOCX или PDF)!");
+        return;
+      }
+    }
+
+    if (submissionStep === 2) {
+      if (!newField.trim()) {
+        setStepError("⚠️ Пожалуйста, выберите научную область!");
+        return;
+      }
+    }
+
+    setSubmissionStep((s) => Math.min(4, s + 1));
+  };
+
+  const handleSelectStep = (targetStep: number) => {
+    setStepError("");
+    if (targetStep > 1) {
+      if (!newTitle.trim() || !newAbstract.trim() || !newKeywords.trim() || !manuscriptFile) {
+        setStepError("⚠️ Переход невозможен! Заполните все поля Шага 1 и обязательно загрузите файл рукописи (DOCX/PDF).");
+        return;
+      }
+    }
+    setSubmissionStep(targetStep);
+  };
 
   // Edit & Resubmit Modal State
   const [editingArticle, setEditingArticle] = useState<ApiArticle | null>(null);
@@ -483,27 +527,6 @@ export default function AuthorDashboard() {
             );
           })}
         </div>
-        <div className="side-issue">
-          <p>{t.currentIssue}</p>
-          <b style={{ fontSize: "13px", lineHeight: 1.2 }}>
-            {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.journalTitle || getStoredIssues()[0]?.journalTitle || "Expert Scientific Journal"}
-          </b>
-          <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-            № {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || getStoredIssues()[0]?.number || 10} / {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.year || 2026}
-          </span>
-          <div className="side-cover">
-            {getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.coverUrl ? (
-              <img src={getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")!.coverUrl} alt="Cover" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <>
-                <strong style={{ fontSize: "11px" }}>EXPERT</strong>
-                <div />
-                <i>№ {(getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || 10) < 10 ? `0${getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || 10}` : getStoredIssues().find((i) => i.status === "DRAFT" || i.status === "SCHEDULED")?.number || 10}</i>
-              </>
-            )}
-          </div>
-          <a href="/journal">{t.viewIssue} <b>→</b></a>
-        </div>
       </aside>
 
       <div className="author-main">
@@ -746,23 +769,30 @@ export default function AuthorDashboard() {
                 {/* 4 STEPS STEPPER BAR */}
                 <div className="stepper-nav">
                   <div className="stepper-line" />
-                  <div className={`stepper-item ${submissionStep === 1 ? "active" : submissionStep > 1 ? "completed" : ""}`} onClick={() => setSubmissionStep(1)}>
+                  <div className={`stepper-item ${submissionStep === 1 ? "active" : submissionStep > 1 ? "completed" : ""}`} onClick={() => handleSelectStep(1)}>
                     <div className="stepper-circle">{submissionStep > 1 ? "✓" : "1"}</div>
                     <span className="stepper-label">Начало</span>
                   </div>
-                  <div className={`stepper-item ${submissionStep === 2 ? "active" : submissionStep > 2 ? "completed" : ""}`} onClick={() => setSubmissionStep(2)}>
+                  <div className={`stepper-item ${submissionStep === 2 ? "active" : submissionStep > 2 ? "completed" : ""}`} onClick={() => handleSelectStep(2)}>
                     <div className="stepper-circle">{submissionStep > 2 ? "✓" : "2"}</div>
                     <span className="stepper-label">Детали</span>
                   </div>
-                  <div className={`stepper-item ${submissionStep === 3 ? "active" : submissionStep > 3 ? "completed" : ""}`} onClick={() => setSubmissionStep(3)}>
+                  <div className={`stepper-item ${submissionStep === 3 ? "active" : submissionStep > 3 ? "completed" : ""}`} onClick={() => handleSelectStep(3)}>
                     <div className="stepper-circle">{submissionStep > 3 ? "✓" : "3"}</div>
                     <span className="stepper-label">Соавторы</span>
                   </div>
-                  <div className={`stepper-item ${submissionStep === 4 ? "active" : ""}`} onClick={() => setSubmissionStep(4)}>
+                  <div className={`stepper-item ${submissionStep === 4 ? "active" : ""}`} onClick={() => handleSelectStep(4)}>
                     <div className="stepper-circle">4</div>
                     <span className="stepper-label">Проверка и отправка</span>
                   </div>
                 </div>
+
+                {stepError && (
+                  <div style={{ background: "#fef2f2", border: "1px solid #f87171", color: "#991b1b", padding: "14px 18px", borderRadius: "8px", marginBottom: "20px", fontSize: "13px", fontWeight: "800", display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "18px" }}>🛑</span>
+                    <span>{stepError}</span>
+                  </div>
+                )}
 
                 {/* STEP 1: START SUBMISSION */}
                 {submissionStep === 1 && (
@@ -919,7 +949,7 @@ export default function AuthorDashboard() {
                     </button>
 
                     {submissionStep < 4 ? (
-                      <button type="button" className="btn-continue" onClick={() => setSubmissionStep((s) => Math.min(4, s + 1))}>
+                      <button type="button" className="btn-continue" onClick={handleNextStepClick}>
                         Сохранить и продолжить →
                       </button>
                     ) : (
