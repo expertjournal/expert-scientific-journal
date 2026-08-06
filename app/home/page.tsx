@@ -51,10 +51,10 @@ export default function HomePage() {
       {/* HERO SECTION WITH DYNAMIC ISSUE PUBLICATION DATE & EDITOR COVER PHOTO */}
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow light">Международный научный журнал · Open Access</p>
-          <h1>Знания, которые<br /><i>двигают</i> науку вперёд.</h1>
+          <p className="eyebrow light">{t.heroEyebrow}</p>
+          <h1>{t.heroTitle1}<br /><i>{t.heroTitleHighlight}</i> {t.heroTitle2}</h1>
           <p className="hero-text">
-            «Expert» публикует независимые исследования в области права и правовых исследований — для академического сообщества и практиков.
+            {t.heroSubtitle}
           </p>
           <div className="credentials">
             <span>ISSN 2181–1415</span>
@@ -63,9 +63,9 @@ export default function HomePage() {
           </div>
           <div className="hero-actions">
             <a className="btn primary" href={latestIssue ? `/journal?issueId=${latestIssue.id}` : "/journal"}>
-              Текущий выпуск <Arrow />
+              {t.journal} <Arrow />
             </a>
-            <a className="btn ghost" href="/author">Подать статью</a>
+            <a className="btn ghost" href="/author">{t.submitArticleBtn}</a>
           </div>
         </div>
 
@@ -93,9 +93,9 @@ export default function HomePage() {
                   <b>EXPERT</b>
                   <span>ISSN 2181–1415<br />№ {latestIssue.number} / {latestIssue.year}</span>
                 </div>
-                <p>МЕЖДУНАРОДНЫЙ<br />НАУЧНЫЙ ЖУРНАЛ</p>
+                <p>EXPERT<br />SCIENTIFIC JOURNAL</p>
                 <div className="city"><span /><span /><span /><span /><span /></div>
-                <div className="cover-bottom">ПРАВО · ПРАВОВЫЕ ИССЛЕДОВАНИЯ</div>
+                <div className="cover-bottom">LAW & LEGAL RESEARCH</div>
                 <div className="issue-badge">
                   № {latestIssue.number}
                   <small>{latestIssue.year}</small>
@@ -106,7 +106,7 @@ export default function HomePage() {
             <div className="cover" style={{ background: "linear-gradient(135deg, #1e293b, #0f172a)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
               <div style={{ fontSize: "36px", marginBottom: "10px" }}>📖</div>
               <b style={{ color: "#ffffff", fontSize: "16px" }}>EXPERT JOURNAL</b>
-              <small style={{ color: "#94a3b8", marginTop: "6px" }}>Нет опубликованных выпусков</small>
+              <small style={{ color: "#94a3b8", marginTop: "6px" }}>{t.noIssuesTitle}</small>
             </div>
           )}
 
@@ -115,16 +115,16 @@ export default function HomePage() {
             <div className="published">
               <span>✓</span>
               <div>
-                <b>Выпуск опубликован</b>
-                <small>{new Date(latestIssue.publicationDate).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</small>
+                <b>{t.published}</b>
+                <small>{new Date(latestIssue.publicationDate).toLocaleDateString()}</small>
               </div>
             </div>
           ) : (
             <div className="published" style={{ background: "rgba(255,255,255,0.9)" }}>
               <span style={{ background: "#94a3b8" }}>ℹ</span>
               <div>
-                <b>Ожидание публикации</b>
-                <small>Новый выпуск формируется</small>
+                <b>{t.noIssuesWait}</b>
+                <small>{t.noIssuesDesc}</small>
               </div>
             </div>
           )}
@@ -135,10 +135,10 @@ export default function HomePage() {
       <section className="section issue-section" id="issue">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">АКТУАЛЬНЫЙ НОМЕР</p>
-            <h2>Текущий выпуск</h2>
+            <p className="eyebrow">{t.currentIssueEyebrow}</p>
+            <h2>{t.journal}</h2>
           </div>
-          <a className="text-link" href="/archive">Все выпуски <Arrow /></a>
+          <a className="text-link" href="/archive">{t.allIssuesLink} <Arrow /></a>
         </div>
 
         {latestIssue ? (
@@ -154,28 +154,28 @@ export default function HomePage() {
             )}
             <div className="issue-detail">
               <p className="issue-number">Expert № {latestIssue.number} <span>· {latestIssue.year}</span></p>
-              <h3>{latestIssue.description || "Междисциплинарный электронный научный журнал"}</h3>
-              <p>Официально опубликованный сборник научных исследований.</p>
+              <h3>{latestIssue.description || "Expert Scientific Journal"}</h3>
+              <p>International Journal of Multidisciplinary Research</p>
               <div className="meta">
                 {latestIssue.publicationDate && (
-                  <span>◷ {new Date(latestIssue.publicationDate).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
+                  <span>◷ {new Date(latestIssue.publicationDate).toLocaleDateString()}</span>
                 )}
                 {latestIssue.doi && <span>⌁ {latestIssue.doi}</span>}
               </div>
               <div>
-                <a className="btn primary" href={`/journal?issueId=${latestIssue.id}`}>Открыть выпуск</a>
+                <a className="btn primary" href={`/journal?issueId=${latestIssue.id}`}>{t.viewIssue}</a>
               </div>
             </div>
             <aside className="issue-aside">
-              <div><strong>{latestArticles.length}</strong><span>статей в номере</span></div>
+              <div><strong>{latestArticles.length}</strong><span>{t.articlesCountInIssue}</span></div>
               <div><strong>100%</strong><span>Peer Review</span></div>
-              <p>Данные из базы PostgreSQL / Prisma</p>
+              <p>PostgreSQL / Prisma Database</p>
             </aside>
           </div>
         ) : (
           <div style={{ background: "#ffffff", padding: "40px", borderRadius: "12px", textAlign: "center", color: "#64748b", border: "1px solid #e2e8f0" }}>
-            <h3 style={{ fontSize: "16px", color: "#0f172a", marginBottom: "6px" }}>На данный момент нет опубликованных выпусков журнала</h3>
-            <p style={{ fontSize: "13px" }}>Все новые номера журнала будут доступны сразу после публикации в панели редактора.</p>
+            <h3 style={{ fontSize: "16px", color: "#0f172a", marginBottom: "6px" }}>{t.noIssuesTitle}</h3>
+            <p style={{ fontSize: "13px" }}>{t.noIssuesDesc}</p>
           </div>
         )}
       </section>
@@ -184,28 +184,28 @@ export default function HomePage() {
       <section className="section articles-section" id="articles">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">ИССЛЕДОВАНИЯ</p>
-            <h2>Новые публикации</h2>
+            <p className="eyebrow">{t.recentArticlesEyebrow}</p>
+            <h2>{t.recentArticlesHeading}</h2>
           </div>
         </div>
 
         {latestArticles.length === 0 ? (
           <div style={{ background: "#ffffff", padding: "40px", borderRadius: "12px", textAlign: "center", color: "#64748b", border: "1px solid #e2e8f0" }}>
-            <p style={{ fontSize: "14px", margin: 0 }}>Опубликованные статьи пока отсутствуют.</p>
+            <p style={{ fontSize: "14px", margin: 0 }}>{t.noArticlesDesc}</p>
           </div>
         ) : (
           <div className="article-grid">
             {latestArticles.map((a) => (
               <article className="article-card" key={a.id}>
                 <div className="article-top">
-                  <span className="tag">{a.scientificField || "Научные статьи"}</span>
-                  <span>{new Date(a.submissionDate).toLocaleDateString("ru-RU")}</span>
+                  <span className="tag">{a.scientificField || "Research"}</span>
+                  <span>{new Date(a.submissionDate).toLocaleDateString()}</span>
                 </div>
                 <h3>{a.title}</h3>
                 <p className="authors">👤 {a.authorName}</p>
                 <div className="article-foot">
                   <span>PDF</span>
-                  <a href={`/article?id=${a.id}`}>Читать <Arrow /></a>
+                  <a href={`/article/${a.slug || a.id}`}>{t.readMore} <Arrow /></a>
                 </div>
               </article>
             ))}
@@ -216,14 +216,14 @@ export default function HomePage() {
       {/* ABOUT SECTION */}
       <section className="section about" id="about">
         <div className="about-copy">
-          <p className="eyebrow">О ЖУРНАЛЕ</p>
-          <h2>Наука, понятная<br />и доступная миру.</h2>
-          <p>«Expert» — независимая площадка для качественного научного диалога. Мы объединяем исследователей, профессиональное сообщество и новые идеи.</p>
-          <a href="/about" className="text-link">Узнать о редакционной политике <Arrow /></a>
+          <p className="eyebrow">{t.aboutEyebrow}</p>
+          <h2>{t.aboutTitle1}<br />{t.aboutTitle2}</h2>
+          <p>{t.aboutDesc}</p>
+          <a href="/about" className="text-link">{t.aboutPolicyLink} <Arrow /></a>
         </div>
         <div className="stats">
-          <div><strong>{latestArticles.length}</strong><span>опубликованных<br />статей</span></div>
-          <div><strong>{publishedIssues.length}</strong><span>выпусков<br />журнала</span></div>
+          <div><strong>{latestArticles.length}</strong><span>{t.publishedArticlesStat}</span></div>
+          <div><strong>{publishedIssues.length}</strong><span>{t.journalIssuesStat}</span></div>
           <div><strong>100%</strong><span>Crossref<br />DOI</span></div>
           <div><strong>Open</strong><span>Access<br />Journal</span></div>
         </div>
@@ -231,8 +231,8 @@ export default function HomePage() {
 
       {/* INDEXING SECTION */}
       <section className="section indexing">
-        <p className="eyebrow centered">НАШИ ПАРТНЁРЫ И ИНДЕКСАЦИЯ</p>
-        <h2>Представлены в международных базах</h2>
+        <p className="eyebrow centered">{t.partnersEyebrow}</p>
+        <h2>{t.partnersHeading}</h2>
         <div className="logos">
           <span>Crossref</span>
           <span>Google<br /><b>Scholar</b></span>
@@ -246,10 +246,10 @@ export default function HomePage() {
       {/* FAQ SECTION */}
       <section className="section faq">
         <div>
-          <p className="eyebrow">ПОДДЕРЖКА</p>
-          <h2>Частые вопросы</h2>
-          <p>Не нашли ответ? Напишите редакции — мы обычно отвечаем в течение одного рабочего дня.</p>
-          <a className="btn outline" href="/about">Связаться с нами</a>
+          <p className="eyebrow">{t.supportEyebrow}</p>
+          <h2>{t.supportHeading}</h2>
+          <p>{t.supportDesc}</p>
+          <a className="btn outline" href="/about">{t.contactUsBtn}</a>
         </div>
         <div className="accordion">
           {faqs.map((f, i) => (
@@ -265,32 +265,32 @@ export default function HomePage() {
       <footer>
         <div className="footer-brand">
           <a href="/home"><span>e</span><b>Expert</b></a>
-          <p>Международный научный журнал открытого доступа</p>
+          <p>{t.heroEyebrow}</p>
         </div>
         <div>
-          <b>Журнал</b>
-          <a href="/journal">Текущий выпуск</a>
-          <a href="/archive">Архив</a>
-          <a href="/about">О журнале</a>
+          <b>{t.footerJournalGroup}</b>
+          <a href="/journal">{t.journal}</a>
+          <a href="/archive">{t.archive}</a>
+          <a href="/about">{t.about}</a>
         </div>
         <div>
-          <b>Авторам</b>
-          <a href="/author">Подать статью</a>
-          <a href="/register">Регистрация</a>
-          <a href="/about">Требования</a>
+          <b>{t.footerAuthorsGroup}</b>
+          <a href="/author">{t.submitArticle}</a>
+          <a href="/register">{t.register}</a>
+          <a href="/about">{t.submissionGuidelines}</a>
         </div>
         <div>
-          <b>Сервисы</b>
-          <a href="/journal">Поиск статей</a>
-          <a href="/about">Индексация</a>
-          <a href="/about">Контакты</a>
+          <b>{t.footerServicesGroup}</b>
+          <a href="/journal">{t.journal}</a>
+          <a href="/about">{t.indexingAndAbstracting}</a>
+          <a href="/about">{t.needHelp}</a>
         </div>
         <div className="footer-bottom">
           <small>© 2026 Expert Scientific Journal</small>
-          <span>Все права защищены</span>
+          <span>{t.allRightsReserved}</span>
           <div className="footer-links">
-            <a href="/about">Политика конфиденциальности</a>
-            <a href="/about">Условия использования</a>
+            <a href="/about">{t.privacyPolicy}</a>
+            <a href="/about">{t.termsOfUse}</a>
           </div>
         </div>
       </footer>

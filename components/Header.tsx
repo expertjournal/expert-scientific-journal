@@ -120,25 +120,25 @@ export default function Header({ activePage }: HeaderProps) {
                 <small>{user?.email}</small>
               </div>
               <div className="user-role-badge">
-                {user?.role === "author" && "Автор"}
-                {user?.role === "editor" && "Редактор"}
-                {user?.role === "reviewer" && "Рецензент"}
-                {user?.role === "reader" && "Читатель"}
+                {user?.role === "author" && (t.authorRole || "Автор")}
+                {user?.role === "editor" && (t.editorCabinet || "Редактор")}
+                {user?.role === "reviewer" && (t.reviewerCabinet || "Рецензент")}
+                {user?.role === "reader" && (t.profileSettings || "Читатель")}
               </div>
               <button className="user-action" onClick={handleAuthAction}>
-                {hasRole(["author"]) && "Авторский кабинет"}
-                {hasRole(["editor"]) && "Редакционная панель"}
-                {hasRole(["reviewer"]) && "Кабинет рецензента"}
-                {hasRole(["reader"]) && "Мой профиль"}
+                {hasRole(["author"]) && t.authorCabinet}
+                {hasRole(["editor"]) && t.editorCabinet}
+                {hasRole(["reviewer"]) && t.reviewerCabinet}
+                {hasRole(["reader"]) && t.profileSettings}
               </button>
               <button className="user-action logout" onClick={logout}>
-                Выйти
+                {t.logout}
               </button>
             </div>
           </div>
         ) : (
           <a className="login" href="/login">
-            Войти
+            {t.login}
           </a>
         )}
       </div>

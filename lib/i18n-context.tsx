@@ -115,6 +115,43 @@ export interface Translations {
   fileRequiredError: string;
   totalIssues: string;
   archiveSubtitle: string;
+
+  // Home Page Specific Translations
+  heroEyebrow: string;
+  heroTitle1: string;
+  heroTitleHighlight: string;
+  heroTitle2: string;
+  heroSubtitle: string;
+  submitArticleBtn: string;
+  currentIssueEyebrow: string;
+  allIssuesLink: string;
+  articlesCountInIssue: string;
+  noIssuesTitle: string;
+  noIssuesDesc: string;
+  noIssuesWait: string;
+  noArticlesDesc: string;
+  recentArticlesEyebrow: string;
+  recentArticlesHeading: string;
+  readMore: string;
+  aboutEyebrow: string;
+  aboutTitle1: string;
+  aboutTitle2: string;
+  aboutDesc: string;
+  aboutPolicyLink: string;
+  publishedArticlesStat: string;
+  journalIssuesStat: string;
+  partnersEyebrow: string;
+  partnersHeading: string;
+  supportEyebrow: string;
+  supportHeading: string;
+  supportDesc: string;
+  contactUsBtn: string;
+  footerJournalGroup: string;
+  footerAuthorsGroup: string;
+  footerServicesGroup: string;
+  allRightsReserved: string;
+  privacyPolicy: string;
+  termsOfUse: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -220,6 +257,42 @@ const translations: Record<Language, Translations> = {
     fileRequiredError: "Загрузка файла рукописи (DOCX или PDF) обязательна!",
     totalIssues: "Всего выпусков:",
     archiveSubtitle: "Полный реестр всех опубликованных номеров журнала",
+
+    heroEyebrow: "Международный научный журнал · Open Access",
+    heroTitle1: "Знания, которые",
+    heroTitleHighlight: "двигают",
+    heroTitle2: "науку вперёд.",
+    heroSubtitle: "«Expert» публикует независимые исследования в области права и правовых исследований — для академического сообщества и практиков.",
+    submitArticleBtn: "Подать статью",
+    currentIssueEyebrow: "АКТУАЛЬНЫЙ НОМЕР",
+    allIssuesLink: "Все выпуски",
+    articlesCountInIssue: "статей в номере",
+    noIssuesTitle: "На данный момент нет опубликованных выпусков журнала",
+    noIssuesDesc: "Все новые номера журнала будут доступны сразу после публикации в панели редактора.",
+    noIssuesWait: "Ожидание публикации",
+    noArticlesDesc: "Опубликованные статьи пока отсутствуют.",
+    recentArticlesEyebrow: "ИССЛЕДОВАНИЯ",
+    recentArticlesHeading: "Новые публикации",
+    readMore: "Читать",
+    aboutEyebrow: "О ЖУРНАЛЕ",
+    aboutTitle1: "Наука, понятная",
+    aboutTitle2: "и доступная миру.",
+    aboutDesc: "«Expert» — независимая площадка для качественного научного диалога. Мы объединяем исследователей, профессиональное сообщество и новые идеи.",
+    aboutPolicyLink: "Узнать о редакционной политике",
+    publishedArticlesStat: "опубликованных статей",
+    journalIssuesStat: "выпусков журнала",
+    partnersEyebrow: "НАШИ ПАРТНЁРЫ И ИНДЕКСАЦИЯ",
+    partnersHeading: "Представлены в международных базах",
+    supportEyebrow: "ПОДДЕРЖКА",
+    supportHeading: "Частые вопросы",
+    supportDesc: "Не нашли ответ? Напишите редакции — мы обычно отвечаем в течение одного рабочего дня.",
+    contactUsBtn: "Связаться с нами",
+    footerJournalGroup: "Журнал",
+    footerAuthorsGroup: "Авторам",
+    footerServicesGroup: "Сервисы",
+    allRightsReserved: "Все права защищены",
+    privacyPolicy: "Политика конфиденциальности",
+    termsOfUse: "Условия использования",
   },
   UZ: {
     home: "Bosh sahifa",
@@ -323,6 +396,42 @@ const translations: Record<Language, Translations> = {
     fileRequiredError: "Qo'lyozma faylini yuklash (DOCX yoki PDF) majburiy!",
     totalIssues: "Jami nashrlar:",
     archiveSubtitle: "Jurnalning barcha nashr etilgan sonlari reestri",
+
+    heroEyebrow: "Xalqaro ilmiy jurnal · Open Access",
+    heroTitle1: "Ilm-fanni",
+    heroTitleHighlight: "olg'a boshlaydigan",
+    heroTitle2: "bilimlar.",
+    heroSubtitle: "«Expert» huquq va yuridik fanlar sohasida mustaqil tadqiqotlarni akademiya va amaliyotchilar uchun nashr etadi.",
+    submitArticleBtn: "Maqola topshirish",
+    currentIssueEyebrow: "JORIY NASHR",
+    allIssuesLink: "Barcha sonlar",
+    articlesCountInIssue: "sonidagi maqolalar",
+    noIssuesTitle: "Hozirgi vaqtda nashr etilgan jurnal sonlari mavjud emas",
+    noIssuesDesc: "Barcha yangi sonlar tahririyat panelida nashr etilgandan so'ng darhol ushbu sahifada ko'rinadi.",
+    noIssuesWait: "Nashr etilish kutilmoqda",
+    noArticlesDesc: "Nashr etilgan maqolalar hali mavjud emas.",
+    recentArticlesEyebrow: "TADQIQOTLAR",
+    recentArticlesHeading: "Yangi nashrlar",
+    readMore: "O'qish",
+    aboutEyebrow: "JURNAL HAQIDA",
+    aboutTitle1: "Dunyo uchun tushunarli",
+    aboutTitle2: "va ochiq ilmiy platforma.",
+    aboutDesc: "«Expert» — sifatli ilmiy muloqot uchun mustaqil maydon. Biz tadqiqotchilar, professional hamjamiyat va yangi g'oyalarni birilashtiramiz.",
+    aboutPolicyLink: "Tahririyat siyosati haqida ma'lumot",
+    publishedArticlesStat: "nashr etilgan maqolalar",
+    journalIssuesStat: "jurnal sonlari",
+    partnersEyebrow: "HAMKORLARIMIZ VA INDEKSATSIYA",
+    partnersHeading: "Xalqaro ma'lumotlar bazalarida indekslangan",
+    supportEyebrow: "YORDAM",
+    supportHeading: "Ko'p beriladigan savollar",
+    supportDesc: "Savolingizga javob topmadingizmi? Tahririyatga yozing — biz bir ish kuni ichida javob beramiz.",
+    contactUsBtn: "Biz bilan bog'lanish",
+    footerJournalGroup: "Jurnal",
+    footerAuthorsGroup: "Mualliflarga",
+    footerServicesGroup: "Xizmatlar",
+    allRightsReserved: "Barcha huquqlar himoyalangan",
+    privacyPolicy: "Maxfiylik siyosati",
+    termsOfUse: "Foydalanish shartlari",
   },
   EN: {
     home: "Home",
@@ -386,7 +495,7 @@ const translations: Record<Language, Translations> = {
     orcid: "ORCID iD",
     uploadPhoto: "📷 Upload Photo",
     saveChanges: "💾 Save Profile Changes",
-    logout: "⇥ Sign Out",
+    logout: "Sign Out",
 
     openAccess: "Open Access",
     peerReviewed: "Peer-Reviewed Article",
@@ -426,6 +535,42 @@ const translations: Record<Language, Translations> = {
     fileRequiredError: "Manuscript file upload (DOCX or PDF) is mandatory!",
     totalIssues: "Total Issues:",
     archiveSubtitle: "Complete archive registry of all published journal issues",
+
+    heroEyebrow: "International Scientific Journal · Open Access",
+    heroTitle1: "Knowledge that",
+    heroTitleHighlight: "drives",
+    heroTitle2: "science forward.",
+    heroSubtitle: "«Expert» publishes independent research in law and legal studies for the academic community and practitioners.",
+    submitArticleBtn: "Submit Article",
+    currentIssueEyebrow: "CURRENT ISSUE",
+    allIssuesLink: "All Issues",
+    articlesCountInIssue: "articles in issue",
+    noIssuesTitle: "There are currently no published journal issues",
+    noIssuesDesc: "New issues will be available on this page immediately after publication by the editorial board.",
+    noIssuesWait: "Awaiting Publication",
+    noArticlesDesc: "No published articles available yet.",
+    recentArticlesEyebrow: "RESEARCH",
+    recentArticlesHeading: "Recent Publications",
+    readMore: "Read",
+    aboutEyebrow: "ABOUT THE JOURNAL",
+    aboutTitle1: "Science that is accessible",
+    aboutTitle2: "and clear to the world.",
+    aboutDesc: "«Expert» is an independent platform for high-quality scientific dialogue connecting researchers, professionals, and new ideas.",
+    aboutPolicyLink: "Learn about Editorial Policy",
+    publishedArticlesStat: "published articles",
+    journalIssuesStat: "journal issues",
+    partnersEyebrow: "OUR PARTNERS & INDEXING",
+    partnersHeading: "Represented in International Databases",
+    supportEyebrow: "SUPPORT",
+    supportHeading: "Frequently Asked Questions",
+    supportDesc: "Didn't find an answer? Write to the editorial office — we usually respond within one business day.",
+    contactUsBtn: "Contact Us",
+    footerJournalGroup: "Journal",
+    footerAuthorsGroup: "Authors",
+    footerServicesGroup: "Services",
+    allRightsReserved: "All rights reserved",
+    privacyPolicy: "Privacy Policy",
+    termsOfUse: "Terms of Use",
   },
 };
 

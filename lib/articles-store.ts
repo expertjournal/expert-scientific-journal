@@ -24,6 +24,7 @@ export interface StoredArticle {
   citations?: number;
   reviewerEmail?: string;
   reviewerAssignedAt?: string;
+  slug?: string;
 }
 
 export interface StoredIssue {
