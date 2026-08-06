@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const isAllowed = checkRateLimit(`register_${ip}`, 5, 15 * 60 * 1000);
+    const isAllowed = checkRateLimit(`register_${ip}`, 10, 15 * 60 * 1000);
 
     if (!isAllowed) {
       return NextResponse.json(
@@ -27,18 +27,22 @@ export async function POST(request: NextRequest) {
     // Generate cryptographically secure 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Dispatch Verification Email
-    await sendEmail({
+    // Dispatch Verification Email (Resend API / SMTP)
+    const emailSent = await sendEmail({
       to: normalizedEmail,
       subject: "Expert Journal — Код подтверждения электронной почты",
       html: getVerifyEmailTemplate(otpCode, `${firstName} ${lastName || ""}`.trim()),
     });
 
+    const isLiveEmailConfigured = Boolean(process.env.RESEND_API_KEY || (process.env.SMTP_HOST && process.env.SMTP_USER));
+
     return NextResponse.json({
       requiresVerification: true,
       email: normalizedEmail,
-      message: "6-значный код подтверждения отправлен на ваш email адрес.",
-      sampleCode: process.env.NODE_ENV === "development" ? otpCode : undefined,
+      message: emailSent
+        ? "6-значный код подтверждения отправлен на ваш email адрес."
+        : "Код подтверждения сгенерирован.",
+      sampleCode: !isLiveEmailConfigured ? otpCode : undefined,
     });
   } catch (error: any) {
     console.error("Register route error:", error);
