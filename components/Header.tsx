@@ -147,17 +147,6 @@ export default function Header({ activePage }: HeaderProps) {
               >
                 {hasRole(["editor"]) ? `⚙️ ${t.editorCabinet || "Кабинет Редактора"}` : hasRole(["reviewer"]) ? `👨‍⚖️ ${t.reviewerCabinet || "Кабинет Рецензента"}` : `📝 ${t.authorCabinet || "Кабинет Автора"}`}
               </button>
-              
-              <button
-                className="user-action"
-                style={{ background: "#f8fafc", color: "#2563eb", fontWeight: "bold" }}
-                onClick={() => {
-                  setUserMenuOpen(false);
-                  router.push("/reviewer/dashboard");
-                }}
-              >
-                👨‍⚖️ {t.reviewerCabinet || "Кабинет Рецензента"}
-              </button>
               <button
                 className="user-action logout"
                 onClick={() => {
