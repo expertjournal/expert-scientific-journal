@@ -283,12 +283,16 @@ export default function AuthorDashboard() {
         const aEmail = (a.authorEmail || "").toLowerCase().trim();
         const aName = (a.authorName || "").toLowerCase().trim();
 
-        if (userEmail && aEmail) {
-          return aEmail === userEmail;
+        // 1. If author email is recorded on article, match MUST be exact by email
+        if (aEmail) {
+          return userEmail ? aEmail === userEmail : false;
         }
+
+        // 2. Only if authorEmail is missing, fallback to exact full name match
         if (userName && aName && aName.length > 2) {
           return aName === userName;
         }
+
         return false;
       });
 
