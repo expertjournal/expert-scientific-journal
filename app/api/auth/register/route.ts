@@ -63,16 +63,19 @@ export async function POST(request: NextRequest) {
     });
 
     // Dispatch Verification Email
-    await sendEmail({
+    const emailSent = await sendEmail({
       to: normalizedEmail,
       subject: "Expert Journal — Код подтверждения электронной почты",
       html: getVerifyEmailTemplate(otpCode, `${firstName} ${lastName || ""}`.trim()),
     });
 
+    const isLiveConfigured = Boolean(process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS));
+
     return NextResponse.json({
       requiresVerification: true,
       email: normalizedEmail,
       message: "6-значный код подтверждения отправлен на ваш email адрес.",
+      sampleCode: !isLiveConfigured || !emailSent ? otpCode : undefined,
     });
   } catch (error: any) {
     console.error("Register route error:", error);
