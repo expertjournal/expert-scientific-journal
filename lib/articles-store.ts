@@ -34,6 +34,7 @@ export interface StoredIssue {
   status: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
   description: string;
   publicationDate?: string;
+  scheduledPublishDate?: string;
   coverUrl?: string;
   doi?: string;
   journalTitle?: string;
@@ -415,6 +416,25 @@ export function addIssueToStore(issue: StoredIssue): StoredIssue[] {
         body: JSON.stringify(issue),
       }).catch(() => null);
       realtimeManager.notifyLocally("issues", "INSERT", issue);
+    } catch (e) {}
+  }
+  return updated;
+}
+
+export function updateIssueInStore(issueId: string, updatedFields: Partial<StoredIssue>): StoredIssue[] {
+  const current = getStoredIssues();
+  const updated = current.map((i) => (i.id === issueId ? { ...i, ...updatedFields } : i));
+  saveStoredIssues(updated);
+
+  if (typeof window !== "undefined") {
+    try {
+      fetch("/api/issues", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: issueId, ...updatedFields }),
+      }).catch(() => null);
+      const updatedItem = updated.find((i) => i.id === issueId);
+      if (updatedItem) realtimeManager.notifyLocally("issues", "UPDATE", updatedItem);
     } catch (e) {}
   }
   return updated;

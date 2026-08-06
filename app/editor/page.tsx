@@ -10,6 +10,7 @@ import {
   updateArticleStatusInStore,
   getStoredIssues,
   addIssueToStore,
+  updateIssueInStore,
   publishIssueInStore,
   getStoredMessages,
   addMessageToStore,
@@ -52,6 +53,7 @@ interface ApiArticle {
   views?: number;
   downloads?: number;
   citations?: number;
+  pages?: string;
   keywords?: { keyword: { name: string } }[];
   authors?: { author: { id: string; fullName: string; institution?: string; email?: string } }[];
 }
@@ -63,6 +65,8 @@ interface ApiIssue {
   status: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
   description: string;
   coverUrl?: string;
+  doi?: string;
+  scheduledPublishDate?: string;
   journalTitle?: string;
   articles?: ApiArticle[];
 }
@@ -118,11 +122,17 @@ export default function EditorDashboard() {
 
   // Issue modal & Cover photo state
   const [showIssueModal, setShowIssueModal] = useState(false);
+  const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
   const [issueNumber, setIssueNumber] = useState("8");
   const [issueJournalTitle, setIssueJournalTitle] = useState("");
   const [issueYear, setIssueYear] = useState("2026");
   const [issueDesc, setIssueDesc] = useState("Осенний выпуск 2026");
   const [issueCoverUrl, setIssueCoverUrl] = useState("");
+  const [scheduledPublishDate, setScheduledPublishDate] = useState("");
+
+  // Pre-publication Preview Modal State
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewIssue, setPreviewIssue] = useState<ApiIssue | null>(null);
 
   // Celebration Modal State
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -314,41 +324,87 @@ export default function EditorDashboard() {
     reader.readAsDataURL(file);
   };
 
-  const handleCreateIssue = async () => {
+  const openCreateIssueModal = () => {
+    setEditingIssueId(null);
+    setIssueNumber((issues.length + 1).toString());
+    setIssueJournalTitle("Expert Scientific Journal");
+    setIssueYear("2026");
+    setIssueDesc(`Официальный выпуск №${issues.length + 1} (2026)`);
+    setIssueCoverUrl("");
+    setScheduledPublishDate("");
+    setShowIssueModal(true);
+  };
+
+  const openEditIssueModal = (iss: ApiIssue) => {
+    setEditingIssueId(iss.id);
+    setIssueNumber(iss.number.toString());
+    setIssueJournalTitle(iss.journalTitle || "Expert Scientific Journal");
+    setIssueYear(iss.year.toString());
+    setIssueDesc(iss.description || "");
+    setIssueCoverUrl(iss.coverUrl || "");
+    setScheduledPublishDate((iss as any).scheduledPublishDate || "");
+    setShowIssueModal(true);
+  };
+
+  const openPreviewModal = (iss: ApiIssue) => {
+    setPreviewIssue(iss);
+    setShowPreviewModal(true);
+  };
+
+  const handleSaveIssue = async () => {
     try {
       const num = parseInt(issueNumber, 10);
       const yr = parseInt(issueYear, 10);
       if (isNaN(num) || isNaN(yr)) return;
 
-      const newIssueObj = {
-        id: "iss-" + Date.now(),
-        number: num,
-        year: yr,
-        status: "DRAFT" as const,
-        journalTitle: issueJournalTitle.trim() || undefined,
-        description: issueDesc || `Выпуск №${num} (${yr})`,
-        coverUrl: issueCoverUrl || undefined,
-      };
+      const issueStatus = scheduledPublishDate ? ("SCHEDULED" as const) : ("DRAFT" as const);
 
-      addIssueToStore(newIssueObj);
-      loadEditorData();
+      if (editingIssueId) {
+        updateIssueInStore(editingIssueId, {
+          number: num,
+          year: yr,
+          status: issueStatus,
+          journalTitle: issueJournalTitle.trim() || undefined,
+          description: issueDesc || `Выпуск №${num} (${yr})`,
+          coverUrl: issueCoverUrl || undefined,
+          scheduledPublishDate: scheduledPublishDate || undefined,
+        });
+      } else {
+        const newIssueObj = {
+          id: "iss-" + Date.now(),
+          number: num,
+          year: yr,
+          status: issueStatus,
+          journalTitle: issueJournalTitle.trim() || undefined,
+          description: issueDesc || `Выпуск №${num} (${yr})`,
+          coverUrl: issueCoverUrl || undefined,
+          scheduledPublishDate: scheduledPublishDate || undefined,
+        };
+        addIssueToStore(newIssueObj);
+      }
+
+      await loadEditorData();
       setShowIssueModal(false);
+      setEditingIssueId(null);
       setIssueNumber("");
       setIssueJournalTitle("");
       setIssueDesc("");
       setIssueCoverUrl("");
+      setScheduledPublishDate("");
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handlePublishIssue = async () => {
-    const draftIssue = issues.find((i) => i.status === "DRAFT");
-    const targetIssue = draftIssue || issues[0];
+  const handlePublishIssueForId = async (targetIssueId?: string) => {
+    const targetIssue = targetIssueId
+      ? issues.find((i) => i.id === targetIssueId)
+      : issues.find((i) => i.status === "DRAFT" || i.status === "SCHEDULED") || issues[0];
+
     if (!targetIssue) return;
 
     try {
-      publishIssueInStore(targetIssue.id, issueCoverUrl || targetIssue.coverUrl);
+      publishIssueInStore(targetIssue.id, targetIssue.coverUrl);
       await loadEditorData();
       setPublishedIssueDetails({ number: targetIssue.number, year: targetIssue.year });
       setShowSuccessModal(true);
@@ -497,11 +553,11 @@ export default function EditorDashboard() {
         </div>
       )}
 
-      {/* CREATE ISSUE MODAL WITH COVER PHOTO UPLOAD */}
+      {/* CREATE & EDIT ISSUE MODAL WITH COVER UPLOAD & SCHEDULED PUBLISH DATE */}
       {showIssueModal && (
         <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "grid", placeItems: "center" }}>
-          <div className="modal-card" style={{ background: "#fff", padding: "24px", borderRadius: "12px", width: "440px", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
-            <h3>Создание нового выпуска журнала</h3>
+          <div className="modal-card" style={{ background: "#fff", padding: "24px", borderRadius: "12px", width: "460px", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+            <h3>{editingIssueId ? "✏️ Редактирование выпуска журнала" : "Создание нового выпуска журнала"}</h3>
             <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "bold" }}>Номер выпуска:</label>
@@ -543,9 +599,155 @@ export default function EditorDashboard() {
                 </div>
               </div>
 
+              {/* SCHEDULED PUBLISH DATE & TIME */}
+              <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <label style={{ fontSize: "11px", fontWeight: "bold", color: "#0f172a", display: "block", marginBottom: "4px" }}>
+                  ⏰ Запланировать дату и время публикации (Schedule Publish):
+                </label>
+                <input
+                  type="datetime-local"
+                  value={scheduledPublishDate}
+                  onChange={(e) => setScheduledPublishDate(e.target.value)}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                />
+                <small style={{ fontSize: "10px", color: "#64748b", marginTop: "4px", display: "block" }}>
+                  Если указано, статус выпуска автоматически изменится на «Запланирован»
+                </small>
+              </div>
+
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "12px" }}>
                 <button onClick={() => setShowIssueModal(false)} style={{ padding: "8px 16px", background: "#eee", border: "none", borderRadius: "6px", cursor: "pointer" }}>Отмена</button>
-                <button onClick={handleCreateIssue} style={{ padding: "8px 16px", background: "#c82a38", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>Создать</button>
+                <button onClick={handleSaveIssue} style={{ padding: "8px 16px", background: "#c82a38", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>
+                  {editingIssueId ? "Сохранить изменения" : "Создать"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRE-PUBLICATION PREVIEW MODAL */}
+      {showPreviewModal && previewIssue && (
+        <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1200, display: "grid", placeItems: "center", padding: "20px" }}>
+          <div style={{ background: "#ffffff", borderRadius: "16px", width: "100%", maxWidth: "840px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 60px rgba(0,0,0,0.4)" }}>
+            {/* HEADER BANNER */}
+            <div style={{ background: "linear-gradient(135deg, #0f172a, #1e3a8a)", color: "#ffffff", padding: "20px 24px", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <span style={{ background: "#2563eb", color: "#ffffff", fontSize: "10px", fontWeight: "800", padding: "3px 10px", borderRadius: "12px", textTransform: "uppercase" }}>
+                  👁️ ПРЕДПРОСМОТР ВЫПУСКА ПЕРЕД ПУБЛИКАЦИЕЙ (PREVIEW)
+                </span>
+                <h2 style={{ fontSize: "20px", fontWeight: "800", margin: "6px 0 0", color: "#ffffff" }}>
+                  {previewIssue.journalTitle || "Expert Scientific Journal"} — Выпуск № {previewIssue.number} ({previewIssue.year})
+                </h2>
+              </div>
+              <button onClick={() => setShowPreviewModal(false)} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", width: "32px", height: "32px", borderRadius: "50%", cursor: "pointer", fontSize: "16px", fontWeight: "bold" }}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: "24px" }}>
+              {/* ISSUE HERO SUMMARY */}
+              <div style={{ display: "flex", gap: "20px", background: "#f8fafc", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
+                {previewIssue.coverUrl ? (
+                  <img src={previewIssue.coverUrl} alt="Cover" style={{ width: "110px", height: "145px", objectFit: "cover", borderRadius: "8px", border: "1px solid #cbd5e1", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                ) : (
+                  <div style={{ width: "110px", height: "145px", background: "linear-gradient(135deg, #0f2744, #1e3a8a)", color: "#fff", borderRadius: "8px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "10px" }}>
+                    <div style={{ fontSize: "12px", fontWeight: "bold" }}>EXPERT</div>
+                    <div style={{ fontSize: "18px", fontWeight: "800", margin: "4px 0" }}>№ {previewIssue.number}</div>
+                    <div style={{ fontSize: "11px", opacity: 0.8 }}>{previewIssue.year}</div>
+                  </div>
+                )}
+
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "8px" }}>
+                    <span style={{ background: previewIssue.status === "PUBLISHED" ? "#dcfce7" : previewIssue.status === "SCHEDULED" ? "#dbeafe" : "#fef3c7", color: previewIssue.status === "PUBLISHED" ? "#15803d" : previewIssue.status === "SCHEDULED" ? "#1d4ed8" : "#b45309", fontSize: "11px", fontWeight: "800", padding: "2px 10px", borderRadius: "10px" }}>
+                      ● {previewIssue.status === "PUBLISHED" ? "Опубликован" : previewIssue.status === "SCHEDULED" ? "⏰ Запланирован" : "📝 Черновик"}
+                    </span>
+                    {(previewIssue as any).scheduledPublishDate && (
+                      <span style={{ fontSize: "11px", color: "#2563eb", fontWeight: "700" }}>
+                        ⏰ Публикация: {new Date((previewIssue as any).scheduledPublishDate).toLocaleString("ru-RU")}
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 style={{ margin: "0 0 6px", fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
+                    {previewIssue.description || `Официальный выпуск № ${previewIssue.number} (${previewIssue.year})`}
+                  </h3>
+                  <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 12px" }}>
+                    ISSN: 3093-1234 | E-ISSN: 3093-1242 | DOI: {previewIssue.doi || `10.47689/expert-${previewIssue.year}-vol6-iss${previewIssue.number}`}
+                  </p>
+
+                  <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#475569" }}>
+                    <div><b>Статей в выпуске:</b> {submittedArticles.filter(a => a.issueId === previewIssue.id || (a.status === "ACCEPTED" && !a.issueId)).length}</div>
+                    <div><b>Готовность:</b> <span style={{ color: "#16a34a", fontWeight: "bold" }}>✓ Готов к публикации</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ARTICLES IN THIS ISSUE PREVIEW */}
+              <h4 style={{ fontSize: "15px", fontWeight: "800", color: "#0f172a", marginBottom: "12px" }}>
+                📄 Список статей, вошедших в выпуск:
+              </h4>
+
+              {(() => {
+                const issueArticles = submittedArticles.filter(a => a.issueId === previewIssue.id || (a.status === "ACCEPTED" && !a.issueId));
+                if (issueArticles.length === 0) {
+                  return (
+                    <div style={{ padding: "20px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
+                      В этот выпуск пока не добавлено ни одной принятой статьи.
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {issueArticles.map((art, idx) => (
+                      <div key={art.id} style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontSize: "11px", color: "#2563eb", fontWeight: "700", marginBottom: "2px" }}>
+                            Статья #{idx + 1} • {art.scientificField || "Юридические науки"} • С. {art.pages || `${(idx * 10) + 1}-${(idx * 10) + 12}`}
+                          </div>
+                          <div style={{ fontSize: "14px", fontWeight: "800", color: "#0f172a" }}>{art.title}</div>
+                          <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                            ✍️ {art.authors?.[0]?.author?.fullName || "Автор"} ({art.authors?.[0]?.author?.institution || "Expert Journal"})
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => downloadManuscriptFile({ fileUrl: art.fileUrl, fileName: art.fileName, title: art.title })}
+                          style={{ background: "#f1f5f9", border: "1px solid #cbd5e1", padding: "6px 12px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}
+                        >
+                          📄 PDF
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* MODAL FOOTER BUTTONS */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #e2e8f0" }}>
+                <button onClick={() => setShowPreviewModal(false)} style={{ padding: "10px 18px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>
+                  ✕ Закрыть
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPreviewModal(false);
+                    openEditIssueModal(previewIssue);
+                  }}
+                  style={{ padding: "10px 18px", background: "#fff7ed", border: "1px solid #fed7aa", color: "#c2410c", borderRadius: "8px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+                >
+                  ✏️ Редактировать выпуск
+                </button>
+                {previewIssue.status !== "PUBLISHED" && (
+                  <button
+                    onClick={() => {
+                      setShowPreviewModal(false);
+                      handlePublishIssueForId(previewIssue.id);
+                    }}
+                    style={{ padding: "10px 22px", background: "#16a34a", color: "#ffffff", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: "800", cursor: "pointer", boxShadow: "0 4px 12px rgba(22, 163, 74, 0.25)" }}
+                  >
+                    🚀 Опубликовать сейчас
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1008,32 +1210,57 @@ export default function EditorDashboard() {
             <section className="editor-panel">
               <div className="panel-top">
                 <h2>Архив и реестр выпусков журнала</h2>
-                <button className="btn-primary" onClick={() => setShowIssueModal(true)}>
+                <button className="btn-primary" onClick={openCreateIssueModal}>
                   + Создать выпуск
                 </button>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", padding: "20px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "18px", padding: "20px" }}>
                 {issues.map((iss) => (
-                  <div key={iss.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "16px", display: "flex", gap: "14px" }}>
-                    {iss.coverUrl ? (
-                      <img src={iss.coverUrl} alt="Cover" style={{ width: "70px", height: "90px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
-                    ) : (
-                      <div style={{ width: "70px", height: "90px", background: "#1c2836", color: "#fff", borderRadius: "6px", display: "grid", placeItems: "center", fontSize: "11px", fontWeight: "bold", textAlign: "center", padding: "4px" }}>
-                        EXPERT<br/>№ {iss.number}
+                  <div key={iss.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "18px", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
+                    <div style={{ display: "flex", gap: "14px", marginBottom: "14px" }}>
+                      {iss.coverUrl ? (
+                        <img src={iss.coverUrl} alt="Cover" style={{ width: "75px", height: "100px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1", flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: "75px", height: "100px", background: "linear-gradient(135deg, #0f2744, #1e3a8a)", color: "#fff", borderRadius: "6px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "bold", textAlign: "center", padding: "6px", flexShrink: 0 }}>
+                          EXPERT<br/>№ {iss.number}<br/><small style={{ fontSize: "9px", opacity: 0.8 }}>{iss.year}</small>
+                        </div>
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#0f172a" }}>Выпуск № {iss.number} ({iss.year})</h4>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "8px" }}>
+                          <span style={{ display: "inline-block", fontSize: "11px", color: iss.status === "PUBLISHED" ? "#16a34a" : iss.status === "SCHEDULED" ? "#2563eb" : "#d97706", fontWeight: "800" }}>
+                            ● {iss.status === "PUBLISHED" ? "Опубликован" : iss.status === "SCHEDULED" ? "⏰ Запланирован" : "📝 Черновик"}
+                          </span>
+                          {(iss as any).scheduledPublishDate && (
+                            <small style={{ fontSize: "10px", color: "#2563eb", fontWeight: "700" }}>
+                              ⏰ Время: {new Date((iss as any).scheduledPublishDate).toLocaleString("ru-RU")}
+                            </small>
+                          )}
+                        </div>
+                        <p style={{ fontSize: "11px", color: "#64748b", margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          {iss.description}
+                        </p>
                       </div>
-                    )}
-                    <div>
-                      <h4 style={{ margin: "0 0 4px", fontSize: "15px" }}>Выпуск № {iss.number} ({iss.year})</h4>
-                      <div style={{ fontSize: "11px", color: iss.status === "PUBLISHED" ? "#16a34a" : "#d97706", fontWeight: "bold", marginBottom: "8px" }}>
-                        ● {iss.status === "PUBLISHED" ? "Опубликован" : "Черновик"}
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        {iss.status !== "PUBLISHED" && (
+                          <button onClick={() => openEditIssueModal(iss)} style={{ flex: 1, background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa", padding: "6px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}>
+                            ✏️ Редактировать
+                          </button>
+                        )}
+                        <button onClick={() => openPreviewModal(iss)} style={{ flex: 1, background: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "6px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}>
+                          👁️ Предпросмотр
+                        </button>
                       </div>
-                      <p style={{ fontSize: "11px", color: "#64748b", margin: "0 0 10px" }}>{iss.description}</p>
-                      <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                        <button onClick={() => router.push(`/journal?issueId=${iss.id}`)} style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1", padding: "5px 10px", borderRadius: "5px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
+
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button onClick={() => router.push(`/journal?issueId=${iss.id}`)} style={{ flex: 1, background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1", padding: "6px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}>
                           Открыть выпуск →
                         </button>
                         {iss.status !== "PUBLISHED" && (
-                          <button onClick={handlePublishIssue} style={{ background: "#2563eb", color: "#fff", border: "none", padding: "5px 10px", borderRadius: "5px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
+                          <button onClick={() => handlePublishIssueForId(iss.id)} style={{ flex: 1, background: "#16a34a", color: "#fff", border: "none", padding: "6px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "800", cursor: "pointer", boxShadow: "0 2px 6px rgba(22, 163, 74, 0.2)" }}>
                             ↗ Опубликовать
                           </button>
                         )}
