@@ -273,12 +273,15 @@ export default function AuthorDashboard() {
       const userName = user ? `${user.firstName} ${user.lastName}`.toLowerCase().trim() : "";
 
       const userOnlyStoredList = storedList.filter((a) => {
-        if (!userEmail && !userName) return false;
+        if (!userEmail && !userName) return true;
         const aEmail = (a.authorEmail || "").toLowerCase().trim();
         const aName = (a.authorName || "").toLowerCase().trim();
 
         return (
-          (userEmail && aEmail && (aEmail === userEmail || aEmail.includes(userEmail))) ||
+          !userEmail ||
+          !aEmail ||
+          aEmail === userEmail ||
+          aEmail.includes(userEmail) ||
           (userName && aName && aName.includes(userName))
         );
       });
@@ -310,11 +313,20 @@ export default function AuthorDashboard() {
 
   useEffect(() => {
     loadAuthorData();
+    const handleSync = () => loadAuthorData();
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("articles_updated", handleSync);
     const timer = setInterval(async () => {
       await syncStoreWithServer();
+      const stored = getStoredArticles();
+      if (stored.length > 0) loadAuthorData();
       setChatMessages(getStoredMessages());
     }, 2000);
-    return () => clearInterval(timer);
+    return () => {
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("articles_updated", handleSync);
+      clearInterval(timer);
+    };
   }, [loadAuthorData]);
 
   const handleOpenChatForArticle = (articleTitle: string) => {

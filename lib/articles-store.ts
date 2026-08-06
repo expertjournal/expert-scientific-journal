@@ -51,7 +51,7 @@ export interface StoredMessage {
 
 export interface StoredNotification {
   id: string;
-  userRole?: "author" | "editor" | "all";
+  userRole?: "author" | "editor" | "reviewer" | "all";
   title: string;
   message: string;
   isRead: boolean;

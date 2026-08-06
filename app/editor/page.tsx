@@ -21,6 +21,7 @@ import {
   updateArticleIssueInStore,
   searchArticlesInStore,
   assignReviewerToArticle,
+  addNotificationToStore,
 } from "@/lib/articles-store";
 import { useSupabaseRealtime } from "@/lib/supabase-realtime";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -163,6 +164,16 @@ export default function EditorDashboard() {
     }
     const emailTo = reviewerEmailInput.trim();
     assignReviewerToArticle(targetArticleForAssign.id, emailTo, reviewerNoteInput.trim());
+
+    addNotificationToStore({
+      id: "n-" + Date.now(),
+      userRole: "reviewer",
+      title: "📑 Вам назначена новая статья на рецензирование",
+      message: `Вам назначена статья "${targetArticleForAssign.title}" на тему ${targetArticleForAssign.scientificField || "Правовые исследования"}.`,
+      isRead: false,
+      type: "submission",
+      createdAt: new Date().toISOString(),
+    });
 
     try {
       await sendEmail({
@@ -1642,13 +1653,7 @@ export default function EditorDashboard() {
               {/* REGISTERED REVIEWERS LIST */}
               <div style={{ maxHeight: "180px", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "16px", background: "#fafafa" }}>
                 {(() => {
-                  const reviewersPool = systemUsers.length > 0
-                    ? systemUsers
-                    : [
-                        { id: "rev-1", fullName: "Д-р А. И. Рахимов", email: "reviewer@expert.uz", role: "REVIEWER", institution: "Ташкентский Государственный Юридический Университет" },
-                        { id: "rev-2", fullName: "Проф. Е. В. Смирнова", email: "smirnova@journal.ru", role: "REVIEWER", institution: "Институт Правовых Исследований" },
-                        { id: "rev-3", fullName: "Д-р Б. Т. Каримов", email: "karimov@expert.uz", role: "REVIEWER", institution: "Национальный Центр Права" },
-                      ];
+                  const reviewersPool = systemUsers;
 
                   const filtered = reviewersPool.filter((u) => {
                     if (!reviewerSearchQuery.trim()) return true;
