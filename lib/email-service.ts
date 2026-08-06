@@ -13,14 +13,16 @@ export async function sendEmail({ to, subject, html }: SendEmailPayload): Promis
   // 1. Resend API Transport (Resend.com)
   if (resendApiKey) {
     try {
+      const cleanKey = resendApiKey.trim();
+      const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${resendApiKey}`,
+          Authorization: `Bearer ${cleanKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Expert Journal <onboarding@resend.dev>",
+          from: `Expert Journal <${fromEmail}>`,
           to: [to],
           subject,
           html,
@@ -31,8 +33,8 @@ export async function sendEmail({ to, subject, html }: SendEmailPayload): Promis
         console.log(`[RESEND EMAIL SENT] To: ${to} | Subject: ${subject}`);
         return true;
       }
-      const errJson = await response.json();
-      console.error("[RESEND EMAIL ERROR]", errJson);
+      const errJson = await response.json().catch(() => null);
+      console.error("[RESEND EMAIL ERROR]", response.status, errJson);
     } catch (err) {
       console.error("[RESEND API EXCEPTION]", err);
     }
