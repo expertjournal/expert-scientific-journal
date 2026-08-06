@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_BASE_URL } from "@/lib/api-server";
+import { readServerDB } from "@/lib/server-db";
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +62,19 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
     console.warn(`Backend API endpoint /${subPath} fallback handling:`, error);
 
     // Fallback response handling for dev / demo mode
+    if (request.method === "GET" && subPath === "users") {
+      const db = readServerDB();
+      const mappedUsers = db.users.map((u) => ({
+        id: u.id,
+        fullName: `${u.firstName} ${u.lastName}`.trim() || u.email,
+        email: u.email,
+        authProvider: u.authProvider || "LOCAL",
+        role: u.role.toUpperCase(),
+        createdAt: u.createdAt,
+        lastLoginAt: u.lastLoginAt,
+      }));
+      return NextResponse.json({ success: true, data: mappedUsers });
+    }
     if (request.method === "POST") {
       if (subPath === "issues") {
         return NextResponse.json({

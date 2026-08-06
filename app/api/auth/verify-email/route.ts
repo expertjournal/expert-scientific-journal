@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { signJWT } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { saveOrUpdateUserInDB } from "@/lib/server-db";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +26,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Укажите корректный 6-значный код" }, { status: 400 });
     }
 
-    const user = {
-      id: "usr_" + Date.now(),
+    const savedDbUser = saveOrUpdateUserInDB({
       email: normalizedEmail,
       firstName: firstName || normalizedEmail.split("@")[0] || "Автор",
       lastName: lastName || "",
-      role: "author" as const,
+      role: "author",
       institution: "Expert Scientific Journal",
+      authProvider: "LOCAL",
+    });
+
+    const user = {
+      id: savedDbUser.id,
+      email: savedDbUser.email,
+      firstName: savedDbUser.firstName,
+      lastName: savedDbUser.lastName,
+      role: savedDbUser.role,
+      institution: savedDbUser.institution || "Expert Scientific Journal",
     };
 
     const signedToken = signJWT({
@@ -39,6 +49,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       role: user.role,
       firstName: user.firstName,
+      lastName: user.lastName,
     });
 
     const response = NextResponse.json({ user });

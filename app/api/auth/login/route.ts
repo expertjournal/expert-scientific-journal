@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
 import { signJWT } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
 
 export const dynamic = "force-dynamic";
 
@@ -66,28 +67,41 @@ export async function POST(request: Request) {
       console.warn("Supabase auth login error:", e);
     }
 
-    // 2. Production Dynamic Role & User JWT Generation
-    let role: "author" | "editor" | "admin" | "reader" = "author";
-    let firstName = normalizedEmail.split("@")[0] || "Пользователь";
-    let lastName = "";
+    // 2. Search registered database records for user authentication
+    const existingDbUser = findUserByEmailInDB(normalizedEmail);
+
+    let role: "author" | "editor" | "reviewer" | "admin" | "reader" = existingDbUser?.role || "author";
+    let firstName = existingDbUser?.firstName || normalizedEmail.split("@")[0] || "Пользователь";
+    let lastName = existingDbUser?.lastName || "";
+    let institution = existingDbUser?.institution || "Expert Scientific Journal Board";
 
     if (normalizedEmail.includes("editor") || normalizedEmail.includes("redaktor")) {
       role = "editor";
-      firstName = "Главный";
-      lastName = "Редактор";
+      firstName = firstName !== normalizedEmail.split("@")[0] ? firstName : "Главный";
+      lastName = lastName || "Редактор";
     } else if (normalizedEmail.includes("admin")) {
       role = "admin";
-      firstName = "Администратор";
-      lastName = "Системы";
+      firstName = firstName !== normalizedEmail.split("@")[0] ? firstName : "Администратор";
+      lastName = lastName || "Системы";
     }
 
-    const user = {
-      id: "usr_" + Date.now(),
+    const savedUser = saveOrUpdateUserInDB({
+      id: existingDbUser?.id || "usr_" + Date.now(),
       email: normalizedEmail,
       firstName,
       lastName,
       role,
-      institution: "Expert Scientific Journal Board",
+      institution,
+      authProvider: "LOCAL",
+    });
+
+    const user = {
+      id: savedUser.id,
+      email: savedUser.email,
+      firstName: savedUser.firstName,
+      lastName: savedUser.lastName,
+      role: savedUser.role,
+      institution: savedUser.institution || "Expert Scientific Journal Board",
     };
 
     const signedToken = signJWT({
