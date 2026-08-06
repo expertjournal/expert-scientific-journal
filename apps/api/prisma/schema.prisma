@@ -1,0 +1,518 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  READER
+  AUTHOR
+  EDITOR
+  REVIEWER
+  ADMIN
+}
+
+enum ArticleStatus {
+  DRAFT
+  SUBMITTED
+  INITIAL_SCREENING
+  EDITOR_ASSIGNMENT
+  REVIEWER_INVITATION
+  REVIEWER_ACCEPTED
+  UNDER_REVIEW
+  REVISION_REQUIRED
+  ACCEPTED
+  REJECTED
+  COPY_EDITING
+  PROOFREADING
+  TYPESETTING
+  AUTHOR_APPROVAL
+  PUBLISHED
+  INDEXING
+  ARCHIVED
+  WITHDRAWN
+}
+
+enum FileKind {
+  MANUSCRIPT
+  PDF
+  SUPPLEMENTARY
+  SIMILARITY_REPORT
+  REVIEWER_ATTACHMENT
+}
+
+enum VirusScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+}
+
+enum ReviewRecommendation {
+  ACCEPT
+  MINOR_REVISION
+  MAJOR_REVISION
+  REJECT
+}
+
+enum ReviewType {
+  SINGLE_BLIND
+  DOUBLE_BLIND
+  OPEN
+}
+
+enum IssueStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationType {
+  SYSTEM
+  ARTICLE
+  REVIEW
+  MESSAGE
+  ISSUE
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+model User {
+  id                 String                   @id @default(cuid())
+  email              String                   @unique
+  passwordHash       String?
+  authProvider       AuthProvider             @default(LOCAL)
+  googleId           String?                  @unique
+  lastLoginAt        DateTime?
+  role               Role                     @default(READER)
+  isActive           Boolean                  @default(true)
+  isEmailVerified    Boolean                  @default(false)
+  emailVerifiedAt    DateTime?
+  deletedAt          DateTime?
+  version            Int                      @default(1)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  profile            Profile?
+  authoredArticles   Article[]                @relation("SubmittingAuthor")
+  assignedReviews    ReviewAssignment[]       @relation("ReviewerUser")
+  messagesSent       Message[]                @relation("MessageSender")
+  notifications      Notification[]
+  activities         ActivityLog[]
+  refreshTokens      RefreshToken[]
+  verificationTokens EmailVerificationToken[]
+  uploadedFiles      ArticleFile[]            @relation("FileUploader")
+  reviewerInvitations ReviewerInvitation[]    @relation("InvitedReviewerUser")
+  sentInvitations     ReviewerInvitation[]    @relation("InviterUser")
+
+  @@index([email])
+  @@index([role])
+  @@index([googleId])
+}
+
+enum TokenPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model EmailVerificationToken {
+  id        String       @id @default(cuid())
+  userId    String
+  token     String       @unique
+  code      String       // 6-digit OTP code
+  purpose   TokenPurpose @default(EMAIL_VERIFICATION)
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  deviceInfo String?
+  ipAddress  String?
+  isRevoked  Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model Profile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  fullName      String
+  avatarUrl     String?
+  institution   String?
+  department    String?
+  position      String?
+  degree        String?
+  country       String?
+  phone         String?
+  orcid         String?  @unique
+  googleScholar String?
+  researchGate  String?
+  scopusId      String?
+  biography     String?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Journal {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  issnPrint   String?
+  issnOnline  String?
+  doiPrefix   String?
+  publisher   String?
+  languages   String[]
+  frequency   String?
+  version     Int       @default(1)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  issues      Issue[]
+}
+
+model Issue {
+  id              String      @id @default(cuid())
+  journalId       String
+  number          Int
+  year            Int
+  publicationDate DateTime?
+  pages           Int?
+  status          IssueStatus @default(DRAFT)
+  description     String?
+  version         Int         @default(1)
+  deletedAt       DateTime?
+  journal         Journal     @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  articles        Article[]
+
+  @@unique([journalId, number, year])
+  @@index([status, year])
+}
+
+enum DoiStatus {
+  DRAFT
+  PENDING
+  REGISTERED
+  FAILED
+}
+
+enum DoiProvider {
+  CROSSREF
+  DATACITE
+  MOCK
+}
+
+enum LicenseType {
+  CC_BY
+  CC_BY_SA
+  CC_BY_NC
+  CC0
+  CUSTOM
+}
+
+model Article {
+  id                 String             @id @default(cuid())
+  internalId         String             @unique
+  title              String
+  abstract           String
+  language           String
+  articleType        String
+  scientificField    String
+  status             ArticleStatus      @default(DRAFT)
+  doi                String?            @unique
+  doiStatus          DoiStatus          @default(DRAFT)
+  doiProvider        DoiProvider        @default(MOCK)
+  doiRegisteredAt    DateTime?
+  licenseType        LicenseType        @default(CC_BY)
+  viewsCount         Int                @default(0)
+  downloadsCount     Int                @default(0)
+  fundrefId          String?
+  grantNumber        String?
+  submissionDate     DateTime?
+  lastUpdated        DateTime           @updatedAt
+  publishedAt        DateTime?
+  submittingAuthorId String
+  issueId            String?
+  currentVersion     Int                @default(1)
+  version            Int                @default(1)
+  deletedAt          DateTime?
+  submittingAuthor   User               @relation("SubmittingAuthor", fields: [submittingAuthorId], references: [id])
+  issue              Issue?             @relation(fields: [issueId], references: [id])
+  authors            ArticleAuthor[]
+  keywords           ArticleKeyword[]
+  files              ArticleFile[]
+  revisions          ArticleRevision[]
+  reviewRounds       ReviewRound[]
+  messages           Message[]
+  activities         ActivityLog[]
+  reviewerInvitations ReviewerInvitation[]
+
+  @@index([status, submissionDate])
+  @@index([issueId])
+  @@index([submittingAuthorId])
+  @@index([title])
+  @@index([doiStatus])
+}
+
+model Author {
+  id          String          @id @default(cuid())
+  fullName    String
+  institution String?
+  country     String?
+  email       String?
+  orcid       String?
+  createdAt   DateTime        @default(now())
+  articles    ArticleAuthor[]
+
+  @@index([fullName])
+  @@index([email])
+}
+
+model ArticleAuthor {
+  articleId     String
+  authorId      String
+  position      Int
+  corresponding Boolean @default(false)
+  article       Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author        Author  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, authorId])
+  @@unique([articleId, position])
+}
+
+model Keyword {
+  id       String           @id @default(cuid())
+  name     String           @unique
+  articles ArticleKeyword[]
+}
+
+model ArticleKeyword {
+  articleId String
+  keywordId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  keyword   Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, keywordId])
+}
+
+model ArticleFile {
+  id              String          @id @default(cuid())
+  articleId       String
+  uploadedById    String?
+  version         Int
+  kind            FileKind
+  objectKey       String
+  originalName    String
+  mimeType        String
+  size            Int
+  checksum        String?         // SHA-256 hash
+  virusScanStatus VirusScanStatus @default(CLEAN)
+  deletedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  article         Article         @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  uploadedBy      User?           @relation("FileUploader", fields: [uploadedById], references: [id])
+
+  @@index([articleId, version])
+  @@index([checksum])
+}
+
+model ArticleRevision {
+  id          String        @id @default(cuid())
+  articleId   String
+  version     Int
+  status      ArticleStatus
+  note        String?
+  createdById String
+  createdAt   DateTime      @default(now())
+  article     Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, version])
+}
+
+model ReviewRound {
+  id          String             @id @default(cuid())
+  articleId   String
+  roundNumber Int
+  reviewType  ReviewType         @default(SINGLE_BLIND)
+  deadline    DateTime?
+  decision    ArticleStatus?
+  createdAt   DateTime           @default(now())
+  article     Article            @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  assignments ReviewAssignment[]
+
+  @@unique([articleId, roundNumber])
+}
+
+model ReviewAssignment {
+  id             String                @id @default(cuid())
+  roundId        String
+  reviewerId     String
+  status         String                @default("INVITED") // INVITED, ACCEPTED, DECLINED, COMPLETED, CANCELLED
+  recommendation ReviewRecommendation?
+  assignedAt     DateTime              @default(now())
+  invitedAt      DateTime              @default(now())
+  respondedAt    DateTime?
+  dueAt          DateTime?
+  completedAt    DateTime?
+  coiAccepted    Boolean               @default(false)
+  coiAcceptedAt  DateTime?
+  round          ReviewRound           @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  reviewer       User                  @relation("ReviewerUser", fields: [reviewerId], references: [id])
+  reports        ReviewReport[]
+  reminders      ReviewReminderLog[]
+
+  @@index([reviewerId, status])
+  @@index([roundId])
+}
+
+model ReviewReport {
+  id                   String           @id @default(cuid())
+  assignmentId         String           @unique
+  commentsToEditor     String?
+  commentsToAuthor     String
+  qualityScore         Int?             // 1 to 5 rating
+  noveltyScore         Int?             // 1 to 5 rating
+  confidentialMetadata Json?
+  submittedAt          DateTime         @default(now())
+  assignment           ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+model ConflictOfInterest {
+  id          String   @id @default(cuid())
+  articleId   String
+  userId      String
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  articleId   String?
+  senderId    String
+  recipientId String
+  subject     String
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  article     Article?  @relation(fields: [articleId], references: [id])
+  sender      User      @relation("MessageSender", fields: [senderId], references: [id])
+
+  @@index([recipientId, readAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  articleId String?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  actor     User?    @relation(fields: [actorId], references: [id])
+  article   Article? @relation(fields: [articleId], references: [id])
+
+  @@index([articleId, createdAt])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  body      String
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
+model IndexingService {
+  id        String   @id @default(cuid())
+  name      String
+  website   String
+  status    String
+  updatedAt DateTime @updatedAt
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  service   String
+  status    String
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@index([service, createdAt])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  COMPLETED
+}
+
+model ReviewerInvitation {
+  id             String           @id @default(cuid())
+  articleId      String
+  reviewerEmail  String
+  reviewerUserId String?
+  invitedBy      String
+  token          String           @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  declinedAt     DateTime?
+  coiAccepted    Boolean          @default(false)
+  coiAcceptedAt  DateTime?
+  ipAddress      String?
+  userAgent      String?
+  status         InvitationStatus @default(PENDING)
+  createdAt      DateTime         @default(now())
+  article        Article          @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  reviewer       User?            @relation("InvitedReviewerUser", fields: [reviewerUserId], references: [id])
+  inviter        User             @relation("InviterUser", fields: [invitedBy], references: [id])
+
+  @@index([reviewerEmail, status])
+  @@index([token])
+}
+
+enum ReminderType {
+  THREE_DAYS
+  ONE_DAY
+  DUE_DATE
+}
+
+model ReviewReminderLog {
+  id           String           @id @default(cuid())
+  assignmentId String
+  reminderType ReminderType
+  sentAt       DateTime         @default(now())
+  assignment   ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, reminderType])
+  @@index([assignmentId])
+}
