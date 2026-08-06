@@ -638,11 +638,12 @@ export function markNotificationsAsReadInStore(): StoredNotification[] {
 export async function syncStoreWithServer() {
   if (typeof window === "undefined") return;
   try {
-    const [resArt, resIss, resMsg, resNotif] = await Promise.all([
+    const [resArt, resIss, resMsg, resNotif, resApps] = await Promise.all([
       fetch("/api/articles").then((r) => r.json()).catch(() => []),
       fetch("/api/issues").then((r) => r.json()).catch(() => []),
       fetch("/api/messages").then((r) => r.json()).catch(() => []),
       fetch("/api/notifications").then((r) => r.json()).catch(() => []),
+      fetch("/api/reviewer-apps").then((r) => r.json()).catch(() => []),
     ]);
 
     // 1. Articles Sync & Protection
@@ -682,12 +683,19 @@ export async function syncStoreWithServer() {
       });
     }
 
-    // 3. Messages & Notifications
+    // 3. Messages, Notifications & Reviewer Apps
     if (Array.isArray(resMsg) && resMsg.length > 0) {
       localStorage.setItem(MESSAGES_KEY, JSON.stringify(resMsg));
     }
     if (Array.isArray(resNotif) && resNotif.length > 0) {
       localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(resNotif));
+    }
+    if (Array.isArray(resApps) && resApps.length > 0) {
+      const localApps = getStoredReviewerApplications();
+      const mergedAppsMap = new Map<string, StoredReviewerApplication>();
+      localApps.forEach((app) => mergedAppsMap.set(app.id, app));
+      resApps.forEach((app: StoredReviewerApplication) => mergedAppsMap.set(app.id, app));
+      saveStoredReviewerApplications(Array.from(mergedAppsMap.values()));
     }
   } catch (e) {
     console.error("syncStoreWithServer error:", e);
@@ -783,6 +791,14 @@ export function addReviewerApplication(app: StoredReviewerApplication): StoredRe
   const updated = [app, ...current.filter((a) => a.id !== app.id && a.userEmail !== app.userEmail)];
   saveStoredReviewerApplications(updated);
 
+  if (typeof window !== "undefined") {
+    fetch("/api/reviewer-apps", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(app),
+    }).catch(() => null);
+  }
+
   addNotificationToStore({
     id: "n-app-" + Date.now(),
     userRole: "editor",
@@ -800,6 +816,14 @@ export function updateReviewerApplicationStatus(appId: string, status: "APPROVED
   const current = getStoredReviewerApplications();
   const updated = current.map((a) => (a.id === appId ? { ...a, status } : a));
   saveStoredReviewerApplications(updated);
+
+  if (typeof window !== "undefined") {
+    fetch("/api/reviewer-apps", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: appId, status }),
+    }).catch(() => null);
+  }
 
   const targetApp = updated.find((a) => a.id === appId);
   if (targetApp) {

@@ -345,19 +345,8 @@ export default function AuthorDashboard() {
 
       const userOnlyStoredList = storedList.filter((a) => {
         const aEmail = (a.authorEmail || "").toLowerCase().trim();
-        const aName = (a.authorName || "").toLowerCase().trim();
-
-        // 1. If author email is recorded on article, match MUST be exact by email
-        if (aEmail) {
-          return userEmail ? aEmail === userEmail : false;
-        }
-
-        // 2. Only if authorEmail is missing, fallback to exact full name match
-        if (userName && aName && aName.length > 2) {
-          return aName === userName;
-        }
-
-        return false;
+        if (!aEmail || !userEmail) return false;
+        return aEmail === userEmail;
       });
 
       const loadedArticles: ApiArticle[] = userOnlyStoredList.map((a) => ({
@@ -490,7 +479,9 @@ export default function AuthorDashboard() {
         }
       }
 
-      const authorName = user ? `${user.firstName} ${user.lastName}` : "Иван Абдуллаев";
+      const authorName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Автор";
+      const userEmail = (user?.email || "").toLowerCase().trim();
+
       const storedArticle: StoredArticle = {
         id: articleId,
         title: newTitle,
@@ -502,7 +493,7 @@ export default function AuthorDashboard() {
         submissionDate: new Date().toISOString().split("T")[0],
         lastUpdated: new Date().toISOString().split("T")[0],
         authorName,
-        authorEmail: user?.email || "author@journal.ru",
+        authorEmail: userEmail,
         fileName: uploadedFileName,
         fileUrl: uploadedFileUrl,
       };
@@ -623,7 +614,11 @@ export default function AuthorDashboard() {
             const userEmail = (user?.email || "").toLowerCase().trim();
             const myReviewerApp = reviewerApps.find((a) => a.userEmail.toLowerCase().trim() === userEmail);
             const isReviewerApproved =
-              user?.role === "reviewer" || user?.role === "editor" || user?.role === "admin" || myReviewerApp?.status === "APPROVED";
+              user?.role === "reviewer" ||
+              user?.role === "editor" ||
+              user?.role === "admin" ||
+              myReviewerApp?.status === "APPROVED" ||
+              assignedReviews.length > 0;
 
             const navItems = [
               { icon: "⌂", id: "dashboard", label: t.dashboard },
@@ -1302,7 +1297,12 @@ export default function AuthorDashboard() {
               {(() => {
                 const uEmail = (user?.email || "").toLowerCase().trim();
                 const myApp = reviewerApps.find((a) => a.userEmail.toLowerCase().trim() === uEmail);
-                const isApproved = user?.role === "reviewer" || user?.role === "editor" || user?.role === "admin" || myApp?.status === "APPROVED";
+                const isApproved =
+                  user?.role === "reviewer" ||
+                  user?.role === "editor" ||
+                  user?.role === "admin" ||
+                  myApp?.status === "APPROVED" ||
+                  assignedReviews.length > 0;
 
                 if (isApproved) {
                   return (
