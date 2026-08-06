@@ -613,45 +613,13 @@ export default function EditorDashboard() {
                     </button>
                   </div>
 
-                  {/* DYNAMIC JOURNALS CREATED FROM DB */}
-                  {issues.map((iss) => (
-                    <div key={iss.id} style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                      <div>
-                        <div style={{ display: "flex", gap: "14px", marginBottom: "14px" }}>
-                          {iss.coverUrl ? (
-                            <img src={iss.coverUrl} alt="Cover" style={{ width: "65px", height: "85px", objectFit: "cover", borderRadius: "5px", border: "1px solid #cbd5e1" }} />
-                          ) : (
-                            <div style={{ width: "65px", height: "85px", background: "linear-gradient(135deg, #0f2744, #1e3a8a)", color: "#fff", borderRadius: "5px", padding: "8px", fontSize: "9px", fontWeight: "bold", boxShadow: "0 4px 10px rgba(0,0,0,0.15)" }}>
-                              EXPERT<br/><small style={{ fontSize: "7px", opacity: 0.8 }}>№ {iss.number}</small>
-                            </div>
-                          )}
-                          <div>
-                            <h4 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "800", color: "#0f172a" }}>Выпуск № {iss.number} ({iss.year})</h4>
-                            <div style={{ fontSize: "10px", color: "#64748b" }}>{iss.description}</div>
-                            <span style={{ background: iss.status === "PUBLISHED" ? "#dcfce7" : "#fef3c7", color: iss.status === "PUBLISHED" ? "#15803d" : "#b45309", fontSize: "10px", fontWeight: "800", padding: "2px 8px", borderRadius: "10px", marginTop: "4px", display: "inline-block" }}>
-                              ● {iss.status}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", textAlign: "center", borderTop: "1px solid #f1f5f9", paddingTop: "10px", marginBottom: "14px" }}>
-                          <div><small style={{ fontSize: "10px", color: "#64748b" }}>Year</small><div style={{ fontSize: "15px", fontWeight: "800" }}>{iss.year}</div></div>
-                          <div><small style={{ fontSize: "10px", color: "#64748b" }}>Number</small><div style={{ fontSize: "15px", fontWeight: "800" }}>№ {iss.number}</div></div>
-                          <div><small style={{ fontSize: "10px", color: "#64748b" }}>Status</small><div style={{ fontSize: "12px", fontWeight: "800" }}>{iss.status}</div></div>
-                        </div>
-                      </div>
-                      <button onClick={() => router.push(`/journal?issueId=${iss.id}`)} style={{ width: "100%", background: "#ffffff", border: "1px solid #2563eb", color: "#2563eb", padding: "8px", borderRadius: "6px", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
-                        Open Issue →
-                      </button>
-                    </div>
-                  ))}
-
                   {/* CREATE NEW JOURNAL CARD (CLICKING OPENS SHOW ISSUE MODAL CLEANLY) */}
                   <div onClick={() => setShowIssueModal(true)} style={{ background: "#ffffff", border: "2px dashed #cbd5e1", borderRadius: "10px", padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", cursor: "pointer" }}>
                     <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "#f1f5f9", display: "grid", placeItems: "center", fontSize: "20px", fontWeight: "bold", color: "#475569", marginBottom: "10px" }}>+</div>
-                    <h4 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "800" }}>Create New Journal</h4>
-                    <p style={{ fontSize: "11px", color: "#64748b", margin: "0 0 14px" }}>Set up a new journal and start managing submissions</p>
+                    <h4 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "800" }}>Create New Journal Issue</h4>
+                    <p style={{ fontSize: "11px", color: "#64748b", margin: "0 0 14px" }}>Set up a new journal issue and start managing submissions</p>
                     <button onClick={(e) => { e.stopPropagation(); setShowIssueModal(true); }} style={{ background: "#ffffff", border: "1px solid #2563eb", color: "#2563eb", padding: "7px 18px", borderRadius: "6px", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
-                      Create Journal
+                      Create Issue
                     </button>
                   </div>
                 </div>
@@ -665,47 +633,37 @@ export default function EditorDashboard() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px", marginBottom: "20px" }}>
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
                     <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Total Submissions</span>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginTop: "6px" }}>
+                    <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{totalCount}</strong>
-                      <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "700" }}>↑ 12%</span>
                     </div>
-                    <small style={{ fontSize: "10px", color: "#94a3b8" }}>from last month</small>
                   </div>
 
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
                     <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Under Review</span>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginTop: "6px" }}>
+                    <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{underReviewCount}</strong>
-                      <span style={{ fontSize: "11px", color: "#b45309", fontWeight: "700" }}>↓ 8%</span>
                     </div>
-                    <small style={{ fontSize: "10px", color: "#94a3b8" }}>from last month</small>
                   </div>
 
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
                     <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Accepted</span>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginTop: "6px" }}>
+                    <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{acceptedCount}</strong>
-                      <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "700" }}>↑ 15%</span>
                     </div>
-                    <small style={{ fontSize: "10px", color: "#94a3b8" }}>from last month</small>
                   </div>
 
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
                     <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Published</span>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginTop: "6px" }}>
+                    <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{publishedCount}</strong>
-                      <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "700" }}>↑ 20%</span>
                     </div>
-                    <small style={{ fontSize: "10px", color: "#94a3b8" }}>from last month</small>
                   </div>
 
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
                     <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Rejected</span>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginTop: "6px" }}>
+                    <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{rejectedCount}</strong>
-                      <span style={{ fontSize: "11px", color: "#ef4444", fontWeight: "700" }}>↑ 5%</span>
                     </div>
-                    <small style={{ fontSize: "10px", color: "#94a3b8" }}>from last month</small>
                   </div>
                 </div>
 
