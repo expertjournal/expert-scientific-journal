@@ -268,22 +268,28 @@ export default function AuthorDashboard() {
       await syncStoreWithServer();
       const storedList = getStoredArticles();
 
-      // STRICT USER FILTERING: Show ONLY articles that belong to this logged-in user
+      // STRICT USER ISOLATION: Show ONLY articles that belong specifically to this logged-in user
       const userEmail = (user?.email || "").toLowerCase().trim();
-      const userName = user ? `${user.firstName} ${user.lastName}`.toLowerCase().trim() : "";
+      const userName = user ? `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase().trim() : "";
+
+      if (!userEmail && !userName) {
+        setArticles([]);
+        setChatMessages(getStoredMessages());
+        setFetching(false);
+        return;
+      }
 
       const userOnlyStoredList = storedList.filter((a) => {
-        if (!userEmail && !userName) return true;
         const aEmail = (a.authorEmail || "").toLowerCase().trim();
         const aName = (a.authorName || "").toLowerCase().trim();
 
-        return (
-          !userEmail ||
-          !aEmail ||
-          aEmail === userEmail ||
-          aEmail.includes(userEmail) ||
-          (userName && aName && aName.includes(userName))
-        );
+        if (userEmail && aEmail) {
+          return aEmail === userEmail;
+        }
+        if (userName && aName && aName.length > 2) {
+          return aName === userName;
+        }
+        return false;
       });
 
       const loadedArticles: ApiArticle[] = userOnlyStoredList.map((a) => ({
