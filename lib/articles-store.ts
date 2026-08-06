@@ -590,7 +590,7 @@ export function markNotificationsAsReadInStore(): StoredNotification[] {
   return updated;
 }
 
-// INITIAL FETCH FROM SERVER DB ON CLIENT HYDRATION
+// INITIAL FETCH FROM SERVER DB ON CLIENT HYDRATION & BIDIRECTIONAL SYNC
 export async function syncStoreWithServer() {
   if (typeof window === "undefined") return;
   try {
@@ -600,19 +600,54 @@ export async function syncStoreWithServer() {
       fetch("/api/messages").then((r) => r.json()).catch(() => []),
       fetch("/api/notifications").then((r) => r.json()).catch(() => []),
     ]);
-    if (Array.isArray(resArt)) {
-      saveStoredArticles(resArt);
+
+    // 1. Articles Sync & Protection
+    const localArticles = getStoredArticles();
+    if (Array.isArray(resArt) && resArt.length > 0) {
+      const mergedMap = new Map<string, StoredArticle>();
+      localArticles.forEach((a) => mergedMap.set(a.id, a));
+      resArt.forEach((a: StoredArticle) => mergedMap.set(a.id, a));
+      const mergedList = Array.from(mergedMap.values());
+      saveStoredArticles(mergedList);
+    } else if (localArticles.length > 0) {
+      // Push client articles up to server if server database is empty
+      localArticles.forEach((article) => {
+        fetch("/api/articles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(article),
+        }).catch(() => null);
+      });
     }
-    if (Array.isArray(resIss)) {
-      saveStoredIssues(resIss);
+
+    // 2. Issues Sync & Protection
+    const localIssues = getStoredIssues();
+    if (Array.isArray(resIss) && resIss.length > 0) {
+      const mergedIssueMap = new Map<string, StoredIssue>();
+      localIssues.forEach((i) => mergedIssueMap.set(i.id, i));
+      resIss.forEach((i: StoredIssue) => mergedIssueMap.set(i.id, i));
+      const mergedIssueList = Array.from(mergedIssueMap.values());
+      saveStoredIssues(mergedIssueList);
+    } else if (localIssues.length > 0) {
+      localIssues.forEach((issue) => {
+        fetch("/api/issues", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(issue),
+        }).catch(() => null);
+      });
     }
-    if (Array.isArray(resMsg)) {
+
+    // 3. Messages & Notifications
+    if (Array.isArray(resMsg) && resMsg.length > 0) {
       localStorage.setItem(MESSAGES_KEY, JSON.stringify(resMsg));
     }
-    if (Array.isArray(resNotif)) {
+    if (Array.isArray(resNotif) && resNotif.length > 0) {
       localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(resNotif));
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("syncStoreWithServer error:", e);
+  }
 }
 
 // MANUSCRIPT DOWNLOAD HELPER
