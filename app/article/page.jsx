@@ -186,7 +186,7 @@ function ArticleDetailContent() {
               </div>
               <div className="pages-col">
                 <label>{t.pages}</label>
-                <span>{article.pages || "123-145"}</span>
+                <span>{article.pages || (pdfTotalPages ? `1 - ${pdfTotalPages}` : "1 - 12")}</span>
               </div>
             </div>
 

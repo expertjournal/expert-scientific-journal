@@ -224,13 +224,14 @@ export function assignReviewerToArticle(articleId: string, reviewerEmail: string
   return updated;
 }
 
-export function updateArticleIssueInStore(articleId: string, issueId: string): StoredArticle[] {
+export function updateArticleIssueInStore(articleId: string, issueId: string, pages?: string): StoredArticle[] {
   const current = getStoredArticles();
   const updated = current.map((a) =>
     a.id === articleId
       ? {
           ...a,
           issueId,
+          pages: pages || a.pages || "1-12",
           status: "ACCEPTED" as const,
           lastUpdated: new Date().toISOString().split("T")[0],
         }
