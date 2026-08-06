@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, code } = body;
+    const { email, code, firstName, lastName } = body;
 
     const normalizedEmail = (email || "").toLowerCase().trim();
 
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     const user = {
       id: "usr_" + Date.now(),
       email: normalizedEmail,
-      firstName: normalizedEmail.split("@")[0] || "Автор",
-      lastName: "",
+      firstName: firstName || normalizedEmail.split("@")[0] || "Автор",
+      lastName: lastName || "",
       role: "author" as const,
       institution: "Expert Scientific Journal",
     };

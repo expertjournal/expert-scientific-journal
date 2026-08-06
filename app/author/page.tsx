@@ -87,10 +87,10 @@ export default function AuthorDashboard() {
 
   useEffect(() => {
     if (user) {
-      setEditFirstName(user.firstName || "Иван");
-      setEditLastName(user.lastName || "Иванов");
-      setEditOrcid(user.orcid || "0009-0005-4729-1186");
-      setEditInstitution(user.institution || "Автор журнала");
+      setEditFirstName(user.firstName || "");
+      setEditLastName(user.lastName || "");
+      setEditOrcid(user.orcid || "");
+      setEditInstitution(user.institution || "");
       setEditAvatarUrl(user.avatarUrl || "");
     }
   }, [user]);

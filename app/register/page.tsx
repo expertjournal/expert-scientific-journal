@@ -86,7 +86,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     setErrors({});
     try {
-      await verifyEmail(formData.email, otpCode.trim());
+      await verifyEmail(formData.email, otpCode.trim(), formData.firstName, formData.lastName);
       window.location.href = "/author";
     } catch (error: any) {
       console.error("Verification error:", error);

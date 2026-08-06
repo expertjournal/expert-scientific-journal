@@ -32,7 +32,7 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<{ requiresVerification: boolean; email: string; message: string; sampleCode?: string }>;
-  verifyEmail: (email: string, code: string) => Promise<void>;
+  verifyEmail: (email: string, code: string, firstName?: string, lastName?: string) => Promise<void>;
   resendVerification: (email: string) => Promise<{ message: string; sampleCode?: string }>;
   updateProfile: (updatedFields: Partial<User>) => Promise<void>;
   logout: () => void;
@@ -139,11 +139,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  const verifyEmail = async (email: string, code: string) => {
+  const verifyEmail = async (email: string, code: string, firstName?: string, lastName?: string) => {
     const res = await fetch("/api/auth/verify-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ email, code, firstName, lastName }),
     });
 
     if (!res.ok) {
