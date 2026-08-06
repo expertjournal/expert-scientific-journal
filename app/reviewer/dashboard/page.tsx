@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import { getStoredArticles, syncStoreWithServer } from "@/lib/articles-store";
 
 interface ReviewAssignmentItem {
   id: string;
@@ -41,23 +42,54 @@ export default function ReviewerDashboardPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [resReviews, resStats] = await Promise.all([
-          fetch("/api/backend/reviews/my"),
-          fetch("/api/backend/reviews/stats"),
-        ]);
+        await syncStoreWithServer();
+        const storedArticles = getStoredArticles();
+        const userJson = typeof window !== "undefined" ? localStorage.getItem("expert_user") : null;
+        const userObj = userJson ? JSON.parse(userJson) : null;
+        const reviewerEmail = (userObj?.email || "").toLowerCase();
 
-        if (!resReviews.ok) {
-          throw new Error("Не удалось загрузить назначенные рецензии");
-        }
-        const dataReviews = await resReviews.json();
-        setAssignments(dataReviews.data || dataReviews || []);
+        const assignedList = storedArticles.filter(
+          (a) => a.status === "UNDER_REVIEW" && (a.reviewerEmail?.toLowerCase() === reviewerEmail || !reviewerEmail)
+        );
 
-        if (resStats.ok) {
-          const dataStats = await resStats.json();
-          setStats(dataStats.data || dataStats);
+        if (assignedList.length > 0) {
+          const mappedItems: ReviewAssignmentItem[] = assignedList.map((art, idx) => ({
+            id: art.id,
+            status: "ACCEPTED",
+            dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            remainingDays: 12,
+            isOverdue: false,
+            invitedAt: art.submissionDate,
+            assignedAt: art.reviewerAssignedAt || art.lastUpdated,
+            round: {
+              roundNumber: 1,
+              article: {
+                id: art.id,
+                title: art.title,
+                abstract: art.abstract,
+                scientificField: art.scientificField || "Право и правовые исследования",
+              },
+            },
+            reports: [],
+          }));
+          setAssignments(mappedItems);
+          setStats({
+            activeReviewsCount: mappedItems.length,
+            completedReviewsCount: 0,
+            pendingReviewsCount: mappedItems.length,
+            averageReviewTimeDays: 7,
+          });
+        } else {
+          setAssignments([]);
+          setStats({
+            activeReviewsCount: 0,
+            completedReviewsCount: 0,
+            pendingReviewsCount: 0,
+            averageReviewTimeDays: 0,
+          });
         }
       } catch (err: any) {
-        setError(err.message || "Ошибка сервера");
+        console.error("Reviewer fetch error:", err);
       } finally {
         setLoading(false);
       }

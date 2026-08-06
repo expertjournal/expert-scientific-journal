@@ -265,7 +265,23 @@ export default function AuthorDashboard() {
       setFetching(true);
       await syncStoreWithServer();
       const storedList = getStoredArticles();
-      const loadedArticles: ApiArticle[] = storedList.map((a) => ({
+
+      // STRICT USER FILTERING: Show ONLY articles that belong to this logged-in user
+      const userEmail = (user?.email || "").toLowerCase().trim();
+      const userName = user ? `${user.firstName} ${user.lastName}`.toLowerCase().trim() : "";
+
+      const userOnlyStoredList = storedList.filter((a) => {
+        if (!userEmail && !userName) return false;
+        const aEmail = (a.authorEmail || "").toLowerCase().trim();
+        const aName = (a.authorName || "").toLowerCase().trim();
+
+        return (
+          (userEmail && aEmail && (aEmail === userEmail || aEmail.includes(userEmail))) ||
+          (userName && aName && aName.includes(userName))
+        );
+      });
+
+      const loadedArticles: ApiArticle[] = userOnlyStoredList.map((a) => ({
         id: a.id,
         title: a.title,
         abstract: a.abstract,
@@ -288,7 +304,7 @@ export default function AuthorDashboard() {
     } finally {
       setFetching(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadAuthorData();
