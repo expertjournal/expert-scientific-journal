@@ -47,6 +47,9 @@ interface ApiArticle {
   fileName?: string;
   fileUrl?: string;
   issueId?: string;
+  views?: number;
+  downloads?: number;
+  citations?: number;
   keywords?: { keyword: { name: string } }[];
   authors?: { author: { id: string; fullName: string; institution?: string; email?: string } }[];
 }
@@ -191,6 +194,9 @@ export default function EditorDashboard() {
         fileName: a.fileName,
         fileUrl: a.fileUrl,
         issueId: a.issueId,
+        views: a.views || 0,
+        downloads: a.downloads || 0,
+        citations: a.citations || 0,
         keywords: (a.keywords || []).map((k) => ({ keyword: { name: k } })),
         authors: [{ author: { id: "au-1", fullName: a.authorName || "Автор", institution: "Expert Journal", email: a.authorEmail } }],
       }));
@@ -262,11 +268,19 @@ export default function EditorDashboard() {
   };
 
   const handleAcceptArticleWithIssue = (articleId: string) => {
-    const chosenIssueId = selectedIssuesMap[articleId] || (issues[0]?.id || "");
+    const chosenIssueId = selectedIssuesMap[articleId] || (issues.find((i) => i.status !== "PUBLISHED")?.id || "");
     if (!chosenIssueId) {
-      alert("Пожалуйста, сначала выберите выпуск журнала для назначения статьи!");
+      alert("⚠️ Ошибка: Нет открытых выпусков журнала (Черновик)! Создайте новый выпуск журнала, чтобы прикрепить статью.");
+      setShowIssueModal(true);
       return;
     }
+
+    const targetIssue = issues.find((i) => i.id === chosenIssueId);
+    if (targetIssue && targetIssue.status === "PUBLISHED") {
+      alert(`⚠️ Ошибка: Выпуск № ${targetIssue.number} (${targetIssue.year}) уже ОПУБЛИКОВАН и закрыт для добавления новых статей! Пожалуйста, выберите открытый выпуск или создайте новый.`);
+      return;
+    }
+
     updateArticleIssueInStore(articleId, chosenIssueId);
     updateArticleStatusInStore(articleId, "ACCEPTED");
     loadEditorData();
@@ -1057,6 +1071,133 @@ export default function EditorDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {activeTab === "Статистика" && (
+            <section className="article-panel" style={{ padding: "24px", background: "transparent", border: "none", boxShadow: "none" }}>
+              {/* HEADER CARD */}
+              <div style={{ background: "#ffffff", borderRadius: "12px", padding: "24px", marginBottom: "24px", border: "1px solid #e2e8f0", boxShadow: "0 2px 10px rgba(0,0,0,0.03)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px 0" }}>
+                    📊 Аналитическая статистика редакции
+                  </h2>
+                  <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                    Динамический расчет показателей подачи, рецензирования, цитирования и научного охвата
+                  </p>
+                </div>
+                <span style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", fontSize: "12px", fontWeight: "800", padding: "6px 14px", borderRadius: "20px" }}>
+                  ● Real-time Live Analytics
+                </span>
+              </div>
+
+              {/* KPI TOP METRICS */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+                <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Всего рукописей (Total Submissions)</div>
+                  <div style={{ fontSize: "32px", fontWeight: "800", color: "#0f172a", marginTop: "8px" }}>{submittedArticles.length}</div>
+                  <small style={{ fontSize: "11px", color: "#64748b" }}>в реестре журнала</small>
+                </div>
+
+                <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Опубликовано (Published Articles)</div>
+                  <div style={{ fontSize: "32px", fontWeight: "800", color: "#166534", marginTop: "8px" }}>
+                    {submittedArticles.filter((a) => a.status === "PUBLISHED").length}
+                  </div>
+                  <small style={{ fontSize: "11px", color: "#64748b" }}>
+                    в {issues.filter((i) => i.status === "PUBLISHED").length} закрытых выпусках
+                  </small>
+                </div>
+
+                <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Процент принятия (Acceptance Rate)</div>
+                  <div style={{ fontSize: "32px", fontWeight: "800", color: "#2563eb", marginTop: "8px" }}>
+                    {submittedArticles.length > 0
+                      ? Math.round(((submittedArticles.filter((a) => a.status === "ACCEPTED" || a.status === "PUBLISHED").length) / submittedArticles.length) * 100)
+                      : 0}%
+                  </div>
+                  <small style={{ fontSize: "11px", color: "#64748b" }}>на основе решений редактора</small>
+                </div>
+
+                <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Чтение & Цитирование (Views & Citations)</div>
+                  <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "8px" }}>
+                    👁️ {submittedArticles.reduce((acc, a) => acc + (a.views || 0), 0)} • 📥 {submittedArticles.reduce((acc, a) => acc + (a.downloads || 0), 0)}
+                  </div>
+                  <small style={{ fontSize: "11px", color: "#64748b" }}>
+                    💬 {submittedArticles.reduce((acc, a) => acc + (a.citations || 0), 0)} цитирований
+                  </small>
+                </div>
+              </div>
+
+              {/* SECOND ROW: BREAKDOWN BY STATUS & SCIENTIFIC FIELDS */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px" }}>
+                {/* STATUS DISTRIBUTION */}
+                <div style={{ background: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: "800", color: "#0f172a", margin: "0 0 16px 0" }}>
+                    📋 Распределение рукописей по статусам
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {[
+                      { label: "Новые (Submitted)", count: submittedArticles.filter((a) => a.status === "SUBMITTED").length, color: "#2563eb" },
+                      { label: "На рецензировании (Under Review)", count: submittedArticles.filter((a) => a.status === "UNDER_REVIEW").length, color: "#854d0e" },
+                      { label: "Требуют доработки (Revision Required)", count: submittedArticles.filter((a) => a.status === "REVISION_REQUIRED").length, color: "#d97706" },
+                      { label: "Приняты к публикации (Accepted)", count: submittedArticles.filter((a) => a.status === "ACCEPTED").length, color: "#166534" },
+                      { label: "Опубликованы (Published)", count: submittedArticles.filter((a) => a.status === "PUBLISHED").length, color: "#0d9488" },
+                      { label: "Отклонены (Rejected)", count: submittedArticles.filter((a) => a.status === "REJECTED").length, color: "#dc2626" },
+                    ].map((item) => {
+                      const pct = submittedArticles.length > 0 ? Math.round((item.count / submittedArticles.length) * 100) : 0;
+                      return (
+                        <div key={item.label}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: "700", marginBottom: "4px" }}>
+                            <span>{item.label}</span>
+                            <span>{item.count} ({pct}%)</span>
+                          </div>
+                          <div style={{ width: "100%", height: "8px", background: "#f1f5f9", borderRadius: "4px", overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", background: item.color, borderRadius: "4px", transition: "width 0.4s ease" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* SCIENTIFIC FIELDS BREAKDOWN */}
+                <div style={{ background: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: "800", color: "#0f172a", margin: "0 0 16px 0" }}>
+                    ⚖️ Научные направления (Field Distribution)
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {(() => {
+                      const fieldsMap: Record<string, number> = {};
+                      submittedArticles.forEach((a) => {
+                        const field = a.scientificField || "Право и правовые исследования";
+                        fieldsMap[field] = (fieldsMap[field] || 0) + 1;
+                      });
+                      const fieldEntries = Object.entries(fieldsMap);
+
+                      if (fieldEntries.length === 0) {
+                        return <div style={{ fontSize: "13px", color: "#94a3b8", textAlign: "center", padding: "20px" }}>Поданные статьи пока отсутствуют</div>;
+                      }
+
+                      return fieldEntries.map(([field, count]) => {
+                        const pct = submittedArticles.length > 0 ? Math.round((count / submittedArticles.length) * 100) : 0;
+                        return (
+                          <div key={field}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: "700", marginBottom: "4px" }}>
+                              <span style={{ color: "#334155" }}>{field}</span>
+                              <span style={{ color: "#0f172a" }}>{count} ({pct}%)</span>
+                            </div>
+                            <div style={{ width: "100%", height: "8px", background: "#f1f5f9", borderRadius: "4px", overflow: "hidden" }}>
+                              <div style={{ width: `${pct}%`, height: "100%", background: "#3b82f6", borderRadius: "4px", transition: "width 0.4s ease" }} />
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
               </div>
             </section>
           )}
