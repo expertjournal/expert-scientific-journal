@@ -33,9 +33,15 @@ function ArticleDetailContent() {
         const all = getStoredArticles();
         const found = all.find((a) => a.id === articleId) || all[0];
         if (found) {
-          const updatedList = incrementArticleViews(found.id);
-          const fresh = updatedList.find((a) => a.id === found.id) || found;
-          setArticle(fresh);
+          const slugText = found.title
+            .toLowerCase()
+            .replace(/[^a-z0-9а-яўқғҳ\s-]/gi, "")
+            .trim()
+            .replace(/\s+/g, "-")
+            .substring(0, 80);
+          const cleanSlug = slugText ? `${slugText}-${found.id.slice(-6)}` : found.id;
+          router.replace(`/article/${encodeURIComponent(cleanSlug)}`);
+          return;
         } else {
           setArticle(null);
         }
@@ -46,7 +52,7 @@ function ArticleDetailContent() {
       }
     }
     loadData();
-  }, [articleId]);
+  }, [articleId, router]);
 
   if (loading) {
     return <div style={{ padding: "60px", textAlign: "center", color: "#64748b" }}>Loading article from database...</div>;

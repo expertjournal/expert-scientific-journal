@@ -228,22 +228,31 @@ enum LicenseType {
 model Article {
   id                 String             @id @default(cuid())
   internalId         String             @unique
+  slug               String?            @unique
   title              String
   abstract           String
-  language           String
-  articleType        String
-  scientificField    String
+  language           String             @default("ru")
+  articleType        String             @default("Original Research Article")
+  scientificField    String             @default("Law & Legal Studies")
   status             ArticleStatus      @default(DRAFT)
   doi                String?            @unique
   doiStatus          DoiStatus          @default(DRAFT)
-  doiProvider        DoiProvider        @default(MOCK)
+  doiProvider        DoiProvider        @default(CROSSREF)
   doiRegisteredAt    DateTime?
   licenseType        LicenseType        @default(CC_BY)
+  volume             Int?               @default(2026)
+  pages              String?            @default("1-12")
+  references         String[]           @default([])
   viewsCount         Int                @default(0)
   downloadsCount     Int                @default(0)
+  citationsCount     Int                @default(0)
+  pdfUrl             String?
+  htmlUrl            String?
+  publisher          String?            @default("Expert Scientific Journal")
   fundrefId          String?
   grantNumber        String?
   submissionDate     DateTime?
+  acceptedAt         DateTime?
   lastUpdated        DateTime           @updatedAt
   publishedAt        DateTime?
   submittingAuthorId String
@@ -266,6 +275,7 @@ model Article {
   @@index([issueId])
   @@index([submittingAuthorId])
   @@index([title])
+  @@index([slug])
   @@index([doiStatus])
 }
 
