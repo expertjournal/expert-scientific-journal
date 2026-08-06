@@ -1,38 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyJWT } from "@/lib/jwt";
-import { findUserByEmailInDB } from "@/lib/server-db";
+import { findUserByEmail } from "@/lib/db-client";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const token = request.cookies.get("expert_token")?.value;
-
+    const token = req.cookies.get("expert_token")?.value;
     if (!token) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    const decoded = verifyJWT(token);
-    if (!decoded || !decoded.email) {
-      const response = NextResponse.json({ user: null }, { status: 401 });
-      response.cookies.delete("expert_token");
-      return response;
+    const payload = verifyJWT(token);
+    if (!payload || !payload.email) {
+      return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    const dbUser = findUserByEmailInDB(decoded.email);
+    const dbUser = await findUserByEmail(payload.email);
+    if (!dbUser || dbUser.isVerified === false) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
 
     const user = {
-      id: dbUser?.id || decoded.sub,
-      email: dbUser?.email || decoded.email,
-      firstName: dbUser?.firstName || decoded.firstName || decoded.email.split("@")[0],
-      lastName: dbUser?.lastName || decoded.lastName || "",
-      role: (dbUser?.role || decoded.role) as any,
-      institution: dbUser?.institution || decoded.institution || "Expert Journal Board",
+      id: dbUser.id,
+      email: dbUser.email,
+      firstName: dbUser.firstName,
+      lastName: dbUser.lastName,
+      role: dbUser.role,
+      institution: dbUser.institution || "Expert Scientific Journal Board",
     };
 
     return NextResponse.json({ user });
   } catch (error) {
-    console.error("Auth me route error:", error);
-    return NextResponse.json({ user: null }, { status: 500 });
+    return NextResponse.json({ user: null }, { status: 401 });
   }
 }

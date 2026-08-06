@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { sendEmail, getVerifyEmailTemplate } from "@/lib/email-service";
-import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
+import { findUserByEmail, saveOrUpdateUser } from "@/lib/db-client";
 import { hashPassword } from "@/lib/password-hasher";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Duplicate account prevention
-    const existingUser = findUserByEmailInDB(normalizedEmail);
+    const existingUser = await findUserByEmail(normalizedEmail);
     if (existingUser && existingUser.isVerified) {
       return NextResponse.json(
         { message: "Пользователь с таким email уже зарегистрирован. Вы можете войти в систему." },
@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    // Persist pending user to server DB
-    saveOrUpdateUserInDB({
+    // Persist pending user to PostgreSQL / DB client
+    await saveOrUpdateUser({
       email: normalizedEmail,
       firstName: firstName.trim(),
       lastName: (lastName || "").trim(),
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Dispatch Verification Email
-    const emailSent = await sendEmail({
+    await sendEmail({
       to: normalizedEmail,
       subject: "Expert Journal — Код подтверждения электронной почты",
       html: getVerifyEmailTemplate(otpCode, `${firstName} ${lastName || ""}`.trim()),

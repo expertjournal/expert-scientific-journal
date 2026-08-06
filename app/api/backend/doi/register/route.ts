@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getArticlesFromDB, saveOrUpdateArticle } from "@/lib/db-client";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +10,40 @@ const ISSN_ONLINE = "2181-1423";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { articleId, title, authorName, year = 2026, issueNumber = 1, pageRange = "59-74" } = body;
+    const { articleId, title, authorName, year = 2026, issueNumber = 1, pageRange = "59-74", status } = body;
 
-    if (!title || !authorName) {
-      return NextResponse.json({ error: "title and authorName are required" }, { status: 400 });
+    if (!articleId) {
+      return NextResponse.json({ error: "articleId is required" }, { status: 400 });
+    }
+
+    const articles = await getArticlesFromDB();
+    const article = articles.find((a) => a.id === articleId);
+
+    const currentStatus = status || article?.status || "DRAFT";
+
+    // IMMUTABLE DOI RULE: Only PUBLISHED articles can receive DOIs
+    if (currentStatus !== "PUBLISHED") {
+      return NextResponse.json(
+        { error: `DOI can only be assigned to PUBLISHED articles. Current status is '${currentStatus}'.` },
+        { status: 400 }
+      );
     }
 
     const doiPrefix = CROSSREF_MEMBER_ID;
-    const cleanId = (articleId || "art_" + Date.now()).replace(/[^a-zA-Z0-9]/g, "");
-    const generatedDoi = `${doiPrefix}/SRXXIC-${year}-vol1-iss${issueNumber}-${cleanId}`;
+    const cleanId = articleId.replace(/[^a-zA-Z0-9]/g, "");
+    const generatedDoi = `${doiPrefix}/expert-${year}-v6-iss${issueNumber}-${cleanId}`;
+
+    const articleTitle = title || article?.title || "Manuscript Title";
+    const author = authorName || article?.authorName || "Author";
+
+    // Update article DOI in database
+    if (article) {
+      await saveOrUpdateArticle({
+        ...article,
+        doi: generatedDoi,
+        status: "PUBLISHED",
+      });
+    }
 
     // Crossref XML schema metadata representation
     const crossrefXmlMetadata = `<?xml version="1.0" encoding="UTF-8"?>
@@ -26,8 +52,8 @@ export async function POST(request: NextRequest) {
     <doi_batch_id>expert_${Date.now()}</doi_batch_id>
     <timestamp>${Date.now()}</timestamp>
     <depositor>
-      <depositor_name>Expert Journal Editorial</depositor_name>
-      <email_address>editorial@journal.ru</email_address>
+      <depositor_name>Expert Journal Editorial Board</depositor_name>
+      <email_address>editorial@expert-journal.ru</email_address>
     </depositor>
     <registrant>${JOURNAL_TITLE}</registrant>
   </head>
@@ -41,21 +67,21 @@ export async function POST(request: NextRequest) {
         <publication_date media_type="online">
           <year>${year}</year>
         </publication_date>
-        <journal_volume><volume>1</volume></journal_volume>
+        <journal_volume><volume>6</volume></journal_volume>
         <issue>${issueNumber}</issue>
       </journal_issue>
       <journal_article publication_type="full_text">
-        <titles><title>${title}</title></titles>
+        <titles><title>${articleTitle}</title></titles>
         <contributors>
           <person_name sequence="first" contributor_role="author">
-            <surname>${authorName}</surname>
+            <surname>${author}</surname>
           </person_name>
         </contributors>
         <publication_date media_type="online"><year>${year}</year></publication_date>
         <pages><first_page>${pageRange.split("-")[0] || "59"}</first_page></pages>
         <doi_data>
           <doi>${generatedDoi}</doi>
-          <resource>https://expert-journal.ru/article/${cleanId}</resource>
+          <resource>https://expert-journal.up.railway.app/article/${cleanId}</resource>
         </doi_data>
       </journal_article>
     </journal>
@@ -68,8 +94,8 @@ export async function POST(request: NextRequest) {
       crossrefStatus: "REGISTERED",
       depositId: `dep_${Date.now()}`,
       xmlMetadata: crossrefXmlMetadata,
-      message: `DOI ${generatedDoi} successfully generated and registered in Crossref Gateway.`,
-    }, { status: 200 });
+      message: `DOI ${generatedDoi} successfully generated and registered with Crossref Gateway.`,
+    });
   } catch (error: any) {
     console.error("DOI Registration error:", error);
     return NextResponse.json({ error: "Failed to register DOI with Crossref Gateway" }, { status: 500 });

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readServerDB, writeServerDB } from "@/lib/server-db";
+import { getReviewerAppsFromDB, saveOrUpdateReviewerApp, ReviewerAppRecord } from "@/lib/db-client";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const db = readServerDB();
-    return NextResponse.json(db.reviewerApps || []);
+    const apps = await getReviewerAppsFromDB();
+    return NextResponse.json(apps);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
@@ -14,17 +14,10 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const app = await req.json();
-    const db = readServerDB();
-    
-    // Filter existing app from same user
-    db.reviewerApps = [
-      app,
-      ...(db.reviewerApps || []).filter((a: any) => a.id !== app.id && a.userEmail !== app.userEmail),
-    ];
-    writeServerDB(db);
-
-    return NextResponse.json({ success: true, app }, { status: 201 });
+    const app: ReviewerAppRecord = await req.json();
+    if (!app.id) app.id = "app_" + Date.now();
+    const saved = await saveOrUpdateReviewerApp(app);
+    return NextResponse.json({ success: true, application: saved }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
@@ -33,12 +26,16 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const { id, status } = await req.json();
-    const db = readServerDB();
+    if (!id || !status) return NextResponse.json({ message: "Missing params" }, { status: 400 });
 
-    db.reviewerApps = (db.reviewerApps || []).map((a: any) =>
-      a.id === id ? { ...a, status } : a
-    );
-    writeServerDB(db);
+    const apps = await getReviewerAppsFromDB();
+    const existing = apps.find((a) => a.id === id);
+    if (existing) {
+      await saveOrUpdateReviewerApp({
+        ...existing,
+        status,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (e: any) {

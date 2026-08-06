@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { signJWT } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rate-limiter";
-import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
+import { findUserByEmail, saveOrUpdateUser } from "@/lib/db-client";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Укажите корректный 6-значный код" }, { status: 400 });
     }
 
-    const existingUser = findUserByEmailInDB(normalizedEmail);
+    const existingUser = await findUserByEmail(normalizedEmail);
+
+    if (existingUser && existingUser.isVerified) {
+      return NextResponse.json({ message: "Этот email адрес уже подтвержден. Пожалуйста, войдите в аккаунт." }, { status: 400 });
+    }
 
     // OTP validation if stored
     if (existingUser && existingUser.otpCode) {
@@ -40,7 +44,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const savedDbUser = saveOrUpdateUserInDB({
+    const savedDbUser = await saveOrUpdateUser({
       email: normalizedEmail,
       firstName: (firstName || existingUser?.firstName || normalizedEmail.split("@")[0] || "Автор").trim(),
       lastName: (lastName || existingUser?.lastName || "").trim(),
@@ -63,6 +67,7 @@ export async function POST(request: NextRequest) {
 
     const signedToken = signJWT({
       sub: user.id,
+      id: user.id,
       email: user.email,
       role: user.role,
       firstName: user.firstName,

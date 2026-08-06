@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_BASE_URL } from "@/lib/api-server";
-import { readServerDB } from "@/lib/server-db";
+import { getArticlesFromDB } from "@/lib/db-client";
+import { supabase } from "@/lib/supabase-client";
 
 export const dynamic = 'force-dynamic';
 
@@ -63,17 +64,22 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
 
     // Fallback response handling for dev / demo mode
     if (request.method === "GET" && subPath === "users") {
-      const db = readServerDB();
-      const mappedUsers = db.users.map((u) => ({
-        id: u.id,
-        fullName: `${u.firstName} ${u.lastName}`.trim() || u.email,
-        email: u.email,
-        authProvider: u.authProvider || "LOCAL",
-        role: u.role.toUpperCase(),
-        createdAt: u.createdAt,
-        lastLoginAt: u.lastLoginAt,
-      }));
-      return NextResponse.json({ success: true, data: mappedUsers });
+      try {
+        const { data } = await supabase.from("users").select("*");
+        if (data && Array.isArray(data)) {
+          const mappedUsers = data.map((u: any) => ({
+            id: u.id,
+            fullName: `${u.first_name || u.firstName || ""} ${u.last_name || u.lastName || ""}`.trim() || u.email,
+            email: u.email,
+            authProvider: u.authProvider || "LOCAL",
+            role: (u.role || "author").toUpperCase(),
+            createdAt: u.created_at || u.createdAt,
+            lastLoginAt: u.updated_at || u.lastLoginAt,
+          }));
+          return NextResponse.json({ success: true, data: mappedUsers });
+        }
+      } catch (e) {}
+      return NextResponse.json({ success: true, data: [] });
     }
     if (request.method === "POST") {
       if (subPath === "issues") {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
-import { sendEmail, getVerifyEmailTemplate } from "@/lib/email-service";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { sendEmail, getVerifyEmailTemplate } from "@/lib/email-service";
+import { findUserByEmail, saveOrUpdateUser } from "@/lib/db-client";
 
 export const dynamic = "force-dynamic";
 
@@ -25,22 +25,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Укажите Email" }, { status: 400 });
     }
 
-    const existingUser = findUserByEmailInDB(normalizedEmail);
+    const existingUser = await findUserByEmail(normalizedEmail);
     if (!existingUser) {
       return NextResponse.json({ message: "Пользователь с таким email не найден." }, { status: 404 });
+    }
+
+    if (existingUser.isVerified) {
+      return NextResponse.json({ message: "Этот email уже подтвержден. Пожалуйста, войдите в систему." }, { status: 400 });
     }
 
     // Generate fresh 6-digit OTP code & 15 min expiry
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    saveOrUpdateUserInDB({
+    await saveOrUpdateUser({
       ...existingUser,
       otpCode,
       otpExpiresAt,
     });
 
-    // Dispatch Real Verification Email to Gmail
+    // Dispatch Real Verification Email to Gmail / SMTP
     await sendEmail({
       to: normalizedEmail,
       subject: "Expert Journal — Новый код подтверждения электронной почты",
