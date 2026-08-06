@@ -657,9 +657,14 @@ export function markNotificationsAsReadInStore(): StoredNotification[] {
   return updated;
 }
 
+let lastSyncTimestamp = 0;
+
 // INITIAL FETCH FROM SERVER DB ON CLIENT HYDRATION & BIDIRECTIONAL SYNC
-export async function syncStoreWithServer() {
+export async function syncStoreWithServer(force = false) {
   if (typeof window === "undefined") return;
+  const now = Date.now();
+  if (!force && now - lastSyncTimestamp < 5000) return; // Throttle to max once per 5s
+  lastSyncTimestamp = now;
   try {
     const [resArt, resIss, resMsg, resNotif, resApps, resAssignments] = await Promise.all([
       fetch("/api/articles").then((r) => r.json()).catch(() => []),

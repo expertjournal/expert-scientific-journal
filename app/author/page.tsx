@@ -390,10 +390,8 @@ export default function AuthorDashboard() {
     window.addEventListener("articles_updated", handleSync);
     const timer = setInterval(async () => {
       await syncStoreWithServer();
-      const stored = getStoredArticles();
-      if (stored.length > 0) loadAuthorData();
       setChatMessages(getStoredMessages());
-    }, 2000);
+    }, 10000);
     return () => {
       window.removeEventListener("storage", handleSync);
       window.removeEventListener("articles_updated", handleSync);

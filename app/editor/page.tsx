@@ -217,13 +217,13 @@ export default function EditorDashboard() {
   const [reviewerSearchQuery, setReviewerSearchQuery] = useState("");
 
   const handleApproveReviewerApp = (appId: string) => {
+    setReviewerApps((prev) => prev.map((a) => (a.id === appId ? { ...a, status: "APPROVED" as const } : a)));
     updateReviewerApplicationStatus(appId, "APPROVED");
-    setReviewerApps(getStoredReviewerApplications());
   };
 
   const handleRejectReviewerApp = (appId: string) => {
+    setReviewerApps((prev) => prev.map((a) => (a.id === appId ? { ...a, status: "REJECTED" as const } : a)));
     updateReviewerApplicationStatus(appId, "REJECTED");
-    setReviewerApps(getStoredReviewerApplications());
   };
 
   const loadEditorData = useCallback(async () => {
@@ -289,7 +289,7 @@ export default function EditorDashboard() {
     const timer = setInterval(async () => {
       await syncStoreWithServer();
       setMessagesList(getStoredMessages());
-    }, 2000);
+    }, 10000);
     return () => {
       window.removeEventListener("storage", handleStorage);
       clearInterval(timer);
