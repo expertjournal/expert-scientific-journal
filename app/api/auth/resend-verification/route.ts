@@ -1,50 +1,60 @@
-import { NextResponse } from "next/server";
-import { API_BASE_URL } from "@/lib/api-server";
+import { NextRequest, NextResponse } from "next/server";
+import { findUserByEmailInDB, saveOrUpdateUserInDB } from "@/lib/server-db";
+import { sendEmail, getVerifyEmailTemplate } from "@/lib/email-service";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
-export async function POST(request: Request) {
+export const dynamic = "force-dynamic";
+
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email } = body;
+    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const isAllowed = checkRateLimit(`resend_${ip}`, 5, 15 * 60 * 1000);
 
-    let res: Response;
-    try {
-      res = await fetch(`${API_BASE_URL}/auth/resend-verification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-    } catch (networkError) {
-      console.warn("Backend API unreachable during resend verification:", networkError);
-      return NextResponse.json({
-        success: true,
-        message: "Новый код подтверждения отправлен (демо-режим)",
-        sampleCode: "123456",
-      });
-    }
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: "Resend failed" }));
-      let message = errorData.error?.message || errorData.message || "Не удалось отправить код";
-      if (Array.isArray(message)) message = message.join(", ");
-
+    if (!isAllowed) {
       return NextResponse.json(
-        { message },
-        { status: res.status }
+        { message: "Превышено количество попыток повторной отправки. Повторите через 15 минут." },
+        { status: 429 }
       );
     }
 
-    const data = await res.json();
-    const payload = data.data || data;
+    const body = await request.json();
+    const { email } = body;
+    const normalizedEmail = (email || "").toLowerCase().trim();
+
+    if (!normalizedEmail) {
+      return NextResponse.json({ message: "Укажите Email" }, { status: 400 });
+    }
+
+    const existingUser = findUserByEmailInDB(normalizedEmail);
+    if (!existingUser) {
+      return NextResponse.json({ message: "Пользователь с таким email не найден." }, { status: 404 });
+    }
+
+    // Generate fresh 6-digit OTP code & 15 min expiry
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    saveOrUpdateUserInDB({
+      ...existingUser,
+      otpCode,
+      otpExpiresAt,
+    });
+
+    // Dispatch Real Verification Email to Gmail
+    await sendEmail({
+      to: normalizedEmail,
+      subject: "Expert Journal — Новый код подтверждения электронной почты",
+      html: getVerifyEmailTemplate(otpCode, `${existingUser.firstName} ${existingUser.lastName}`.trim()),
+    });
 
     return NextResponse.json({
       success: true,
-      message: payload.message || "Новый код отправлен",
-      sampleCode: payload.otpCode || payload.sampleCode,
+      message: "Новый 6-значный код подтверждения отправлен на ваш email адрес.",
     });
-  } catch (error) {
-    console.error("Resend verification route error:", error);
+  } catch (error: any) {
+    console.error("Resend verification error:", error);
     return NextResponse.json(
-      { message: "Ошибка сервера при отправке кода" },
+      { message: error.message || "Ошибка сервера при отправке кода." },
       { status: 500 }
     );
   }

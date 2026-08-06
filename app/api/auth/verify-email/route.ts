@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
     if (existingUser && existingUser.otpCode) {
       const inputCode = code.trim();
       const expectedCode = existingUser.otpCode.trim();
-      if (inputCode !== expectedCode && inputCode !== "123456") {
+      if (inputCode !== expectedCode) {
         return NextResponse.json({ message: "Неверный код подтверждения." }, { status: 400 });
       }
-      if (inputCode !== "123456" && existingUser.otpExpiresAt && new Date(existingUser.otpExpiresAt).getTime() < Date.now()) {
+      if (existingUser.otpExpiresAt && new Date(existingUser.otpExpiresAt).getTime() < Date.now()) {
         return NextResponse.json({ message: "Срок действия кода истек. Пожалуйста, запросите новый код." }, { status: 400 });
       }
     }
