@@ -23,6 +23,7 @@ import { useSupabaseRealtime } from "@/lib/supabase-realtime";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useLanguage } from "@/lib/i18n-context";
+import { sendEmail } from "@/lib/email-service";
 import "./editor.css";
 
 interface ApiArticle {
@@ -128,12 +129,39 @@ export default function EditorDashboard() {
     setShowAssignModal(true);
   };
 
-  const handleConfirmAssignReviewer = () => {
+  const handleConfirmAssignReviewer = async () => {
     if (!targetArticleForAssign || !reviewerEmailInput.trim()) {
       alert("Пожалуйста, введите email рецензента!");
       return;
     }
-    assignReviewerToArticle(targetArticleForAssign.id, reviewerEmailInput.trim(), reviewerNoteInput.trim());
+    const emailTo = reviewerEmailInput.trim();
+    assignReviewerToArticle(targetArticleForAssign.id, emailTo, reviewerNoteInput.trim());
+
+    try {
+      await sendEmail({
+        to: emailTo,
+        subject: `Expert Journal — Назначение на рецензирование: "${targetArticleForAssign.title}"`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 24px; background: #f8fafc; color: #1e293b; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <h2 style="color: #0f2744; margin-top: 0;">Expert Scientific Journal — Приглашение к рецензированию</h2>
+            <p>Уважаемый рецензент!</p>
+            <p>Редакция журнала <b>Expert Scientific Journal</b> назначила вам для независимой научной экспертизы рукопись:</p>
+            <blockquote style="background: #eff6ff; border-left: 4px solid #2563eb; margin: 16px 0; padding: 12px; font-style: italic; border-radius: 4px;">
+              "${targetArticleForAssign.title}"
+            </blockquote>
+            <p><b>Примечание редактора:</b> ${reviewerNoteInput || "Просим провести независимое рецензирование."}</p>
+            <p>Для ознакомления со статьей и заполнения формы рецензирования перейдите в личный кабинет:</p>
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="https://expert-journal.up.railway.app/reviewer/dashboard" style="background: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Перейти в Кабинет Рецензента</a>
+            </div>
+            <p style="font-size: 11px; color: #94a3b8; text-align: center;">© 2026 Expert Scientific Journal</p>
+          </div>
+        `,
+      });
+    } catch (e) {
+      console.error("Failed to send email to reviewer:", e);
+    }
+
     setShowAssignModal(false);
     setTargetArticleForAssign(null);
     loadEditorData();
@@ -517,19 +545,6 @@ export default function EditorDashboard() {
               </button>
             );
           })}
-        </div>
-        <div className="editor-issue">
-          <small>ТЕКУЩИЙ ВЫПУСК</small>
-          <b>Expert</b>
-          <span>№ 7 / 2026</span>
-          <div className="editor-cover">
-            <strong>EXPERT</strong>
-            <div />
-            <i>№ 07</i>
-          </div>
-          <button onClick={() => router.push("/journal")}>
-            Открыть выпуск <b>→</b>
-          </button>
         </div>
       </aside>
 
@@ -968,8 +983,6 @@ export default function EditorDashboard() {
                                       background: "#fff7ed",
                                       color: "#c2410c",
                                       border: "1px solid #fed7aa",
-                                      padding: "7px 10px",
-                                      borderRadius: "6px",
                                       fontSize: "11px",
                                       fontWeight: "800",
                                       cursor: "pointer",
