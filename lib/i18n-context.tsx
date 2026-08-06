@@ -152,6 +152,22 @@ export interface Translations {
   allRightsReserved: string;
   privacyPolicy: string;
   termsOfUse: string;
+
+  // Editor Panel Specific Translations
+  editorDashboard: string;
+  editorNewArticles: string;
+  editorJournalIssues: string;
+  editorAuthors: string;
+  editorUsers: string;
+  editorStatistics: string;
+  editorMessages: string;
+  editorSettings: string;
+  editorPanelTitle: string;
+  editorSearchPlaceholder: string;
+  overallOverview: string;
+  totalSubmissions: string;
+  recentSubmissions: string;
+  createIssueBtn: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -293,6 +309,21 @@ const translations: Record<Language, Translations> = {
     allRightsReserved: "Все права защищены",
     privacyPolicy: "Политика конфиденциальности",
     termsOfUse: "Условия использования",
+
+    editorDashboard: "Дашборд",
+    editorNewArticles: "Новые статьи",
+    editorJournalIssues: "Выпуски журнала",
+    editorAuthors: "Авторы",
+    editorUsers: "Пользователи",
+    editorStatistics: "Статистика",
+    editorMessages: "Сообщения",
+    editorSettings: "Настройки",
+    editorPanelTitle: "Редакционная панель",
+    editorSearchPlaceholder: "Поиск статей, авторов, DOI...",
+    overallOverview: "Общий обзор",
+    totalSubmissions: "Всего рукописей",
+    recentSubmissions: "Недавние рукописи",
+    createIssueBtn: "Создать выпуск",
   },
   UZ: {
     home: "Bosh sahifa",
@@ -300,7 +331,7 @@ const translations: Record<Language, Translations> = {
     archive: "Nashrlar arxivi",
     about: "Jurnal haqida",
     login: "Kirish",
-    register: "Ro'yxatdan o'tish",
+    register: "Ro'yxatdan o me'yorlash",
     authorCabinet: "Muallif kabineti",
     editorCabinet: "Muharrir kabineti",
 
@@ -432,6 +463,21 @@ const translations: Record<Language, Translations> = {
     allRightsReserved: "Barcha huquqlar himoyalangan",
     privacyPolicy: "Maxfiylik siyosati",
     termsOfUse: "Foydalanish shartlari",
+
+    editorDashboard: "Boshqaruv paneli",
+    editorNewArticles: "Yangi maqolalar",
+    editorJournalIssues: "Jurnal sonlari",
+    editorAuthors: "Mualliflar",
+    editorUsers: "Foydalanuvchilar",
+    editorStatistics: "Statistika",
+    editorMessages: "Xabarlar",
+    editorSettings: "Sozlamalar",
+    editorPanelTitle: "Tahririyat paneli",
+    editorSearchPlaceholder: "Maqolalar, mualliflar, DOI qidiruvi...",
+    overallOverview: "Umumiy sharh",
+    totalSubmissions: "Jami topshirilganlar",
+    recentSubmissions: "Yangi topshirilganlar",
+    createIssueBtn: "Nashr yaratish",
   },
   EN: {
     home: "Home",
@@ -571,6 +617,21 @@ const translations: Record<Language, Translations> = {
     allRightsReserved: "All rights reserved",
     privacyPolicy: "Privacy Policy",
     termsOfUse: "Terms of Use",
+
+    editorDashboard: "Dashboard",
+    editorNewArticles: "New Articles",
+    editorJournalIssues: "Journal Issues",
+    editorAuthors: "Authors",
+    editorUsers: "Users",
+    editorStatistics: "Statistics",
+    editorMessages: "Messages",
+    editorSettings: "Settings",
+    editorPanelTitle: "Editorial Platform",
+    editorSearchPlaceholder: "Search articles, authors, DOI...",
+    overallOverview: "Overall Overview",
+    totalSubmissions: "Total Submissions",
+    recentSubmissions: "Recent Submissions",
+    createIssueBtn: "Create Issue",
   },
 };
 

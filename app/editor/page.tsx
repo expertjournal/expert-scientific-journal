@@ -91,7 +91,19 @@ const nav = [
 
 export default function EditorDashboard() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
+
+  const nav = [
+    { icon: "⌂", label: t.editorDashboard || "Дашборд", id: "Дашборд" },
+    { icon: "📥", label: t.editorNewArticles || "Новые статьи", id: "Новые статьи" },
+    { icon: "📚", label: t.editorJournalIssues || "Выпуски журнала", id: "Выпуски журнала" },
+    { icon: "👤", label: t.editorAuthors || "Авторы", id: "Авторы" },
+    { icon: "👥", label: t.editorUsers || "Пользователи", id: "Пользователи" },
+    { icon: "📊", label: t.editorStatistics || "Статистика", id: "Статистика" },
+    { icon: "✉", label: t.editorMessages || "Сообщения", id: "Сообщения" },
+    { icon: "⚙", label: t.editorSettings || "Настройки", id: "Настройки" },
+  ];
 
   const [activeTab, setActiveTab] = useState("Дашборд");
   const [filterStatus, setFilterStatus] = useState("Все статусы");
@@ -548,17 +560,17 @@ export default function EditorDashboard() {
           <small>editorial platform</small>
         </a>
         <div className="editor-nav">
-          {nav.map((n) => {
-            const isTabActive = activeTab === n[1];
+          {nav.map((item) => {
+            const isTabActive = activeTab === item.id;
             return (
               <button
-                key={n[1]}
-                onClick={() => setActiveTab(n[1])}
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
                 className={isTabActive ? "editor-active" : ""}
               >
-                <i>{n[0]}</i>
-                <span>{n[1]}</span>
-                {n[1] === "Новые статьи" && submittedArticles.filter(a => a.status === "SUBMITTED").length > 0 && <em>{submittedArticles.filter(a => a.status === "SUBMITTED").length}</em>}
+                <i>{item.icon}</i>
+                <span>{item.label}</span>
+                {item.id === "Новые статьи" && submittedArticles.filter(a => a.status === "SUBMITTED").length > 0 && <em>{submittedArticles.filter(a => a.status === "SUBMITTED").length}</em>}
               </button>
             );
           })}
@@ -569,15 +581,15 @@ export default function EditorDashboard() {
       <div className="editor-main">
         <header className="editor-head">
           <div>
-            <small>Редакционная панель</small>
-            <b>{activeTab}</b>
+            <small>{t.editorPanelTitle || "Редакционная панель"}</small>
+            <b>{nav.find(n => n.id === activeTab)?.label || activeTab}</b>
           </div>
           <label className="editor-search" style={{ position: "relative", display: "flex", alignItems: "center" }}>
             ⌕
             <input
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              placeholder="Поиск статей, авторов, DOI..."
+              placeholder={t.editorSearchPlaceholder || "Поиск статей, авторов, DOI..."}
               style={{ paddingRight: term ? "32px" : "12px" }}
             />
             {term && (
@@ -604,7 +616,7 @@ export default function EditorDashboard() {
             )}
             <div>
               <b>{user?.firstName || "Главный"} {user?.lastName || "Редактор"}</b>
-              <small>Редакция журнала</small>
+              <small>{t.editorCabinet || "Редакция журнала"}</small>
             </div>
           </div>
         </header>
@@ -612,66 +624,21 @@ export default function EditorDashboard() {
         <main className="editor-content" style={{ background: "#f8fafc", padding: "28px 32px" }}>
           {activeTab === "Дашборд" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-              {/* SECTION 1: MY JOURNALS (MATCHING PHOTO 1 1:1) */}
+              {/* OVERALL OVERVIEW */}
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                  <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: 0 }}>My Journals</h3>
-                  <button onClick={() => setActiveTab("Выпуски журнала")} style={{ background: "none", border: "none", fontSize: "13px", fontWeight: "700", color: "#2563eb", cursor: "pointer" }}>View All Journals</button>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
-                  {/* JOURNAL CARD 1: Expert Scientific Journal */}
-                  <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div>
-                      <div style={{ display: "flex", gap: "14px", marginBottom: "14px" }}>
-                        <div style={{ width: "65px", height: "85px", background: "linear-gradient(135deg, #0f2744, #1e3a8a)", color: "#fff", borderRadius: "5px", padding: "8px", fontSize: "9px", fontWeight: "bold", boxShadow: "0 4px 10px rgba(0,0,0,0.15)" }}>
-                          Expert Scientific<br/><small style={{ fontSize: "7px", opacity: 0.8 }}>JOURNAL</small>
-                        </div>
-                        <div>
-                          <h4 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "800", color: "#0f172a" }}>Expert Scientific Journal</h4>
-                          <div style={{ fontSize: "10px", color: "#64748b" }}>ISSN: 3093-1234</div>
-                          <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "6px" }}>E-ISSN: 3093-1242</div>
-                          <span style={{ background: "#dcfce7", color: "#15803d", fontSize: "10px", fontWeight: "800", padding: "2px 8px", borderRadius: "10px" }}>Active</span>
-                        </div>
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", textAlign: "center", borderTop: "1px solid #f1f5f9", paddingTop: "10px", marginBottom: "14px" }}>
-                        <div><small style={{ fontSize: "10px", color: "#64748b" }}>Year</small><div style={{ fontSize: "15px", fontWeight: "800" }}>2026</div></div>
-                        <div><small style={{ fontSize: "10px", color: "#64748b" }}>Issues</small><div style={{ fontSize: "15px", fontWeight: "800" }}>{issues.length}</div></div>
-                        <div><small style={{ fontSize: "10px", color: "#64748b" }}>Articles</small><div style={{ fontSize: "15px", fontWeight: "800" }}>{submittedArticles.length}</div></div>
-                      </div>
-                    </div>
-                    <button onClick={() => router.push("/journal")} style={{ width: "100%", background: "#ffffff", border: "1px solid #2563eb", color: "#2563eb", padding: "8px", borderRadius: "6px", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
-                      Open Journal
-                    </button>
-                  </div>
-
-                  {/* CREATE NEW JOURNAL CARD (CLICKING OPENS SHOW ISSUE MODAL CLEANLY) */}
-                  <div onClick={() => setShowIssueModal(true)} style={{ background: "#ffffff", border: "2px dashed #cbd5e1", borderRadius: "10px", padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", cursor: "pointer" }}>
-                    <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "#f1f5f9", display: "grid", placeItems: "center", fontSize: "20px", fontWeight: "bold", color: "#475569", marginBottom: "10px" }}>+</div>
-                    <h4 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "800" }}>Create New Journal Issue</h4>
-                    <p style={{ fontSize: "11px", color: "#64748b", margin: "0 0 14px" }}>Set up a new journal issue and start managing submissions</p>
-                    <button onClick={(e) => { e.stopPropagation(); setShowIssueModal(true); }} style={{ background: "#ffffff", border: "1px solid #2563eb", color: "#2563eb", padding: "7px 18px", borderRadius: "6px", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
-                      Create Issue
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 2: OVERALL OVERVIEW (MATCHING PHOTO 1 1:1) */}
-              <div>
-                <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: "0 0 16px" }}>Overall Overview</h3>
+                <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: "0 0 16px" }}>{t.overallOverview || "Overall Overview"}</h3>
 
                 {/* 5 STAT CARDS */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px", marginBottom: "20px" }}>
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
-                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Total Submissions</span>
+                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>{t.totalSubmissions || "Total Submissions"}</span>
                     <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{totalCount}</strong>
                     </div>
                   </div>
 
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
-                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Under Review</span>
+                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>{t.underReview || "Under Review"}</span>
                     <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{underReviewCount}</strong>
                     </div>
@@ -685,7 +652,7 @@ export default function EditorDashboard() {
                   </div>
 
                   <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px" }}>
-                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>Published</span>
+                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "700" }}>{t.published || "Published"}</span>
                     <div style={{ marginTop: "6px" }}>
                       <strong style={{ fontSize: "26px", fontWeight: "800" }}>{publishedCount}</strong>
                     </div>
