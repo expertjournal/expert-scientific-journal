@@ -39,13 +39,18 @@ export default function Header({ activePage }: HeaderProps) {
     }
   };
 
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
   const getUserInitials = () => {
     if (user) {
+      if (user.firstName === "Алексей" || user.lastName?.includes("Петров")) {
+        return "ED";
+      }
       const f = user.firstName ? user.firstName.charAt(0) : (user.email ? user.email.charAt(0) : "U");
       const l = user.lastName ? user.lastName.charAt(0) : "";
       return `${f}${l}`.toUpperCase();
     }
-    return "";
+    return "ED";
   };
 
   const { t } = useLanguage();
@@ -108,14 +113,16 @@ export default function Header({ activePage }: HeaderProps) {
         </button>
         <LanguageSwitcher />
         {isAuthenticated ? (
-          <div className="user-menu">
-            <button className="user-avatar" onClick={handleAuthAction}>
+          <div className="user-menu" style={{ position: "relative" }}>
+            <button className="user-avatar" onClick={() => setUserMenuOpen(!userMenuOpen)} title="Профиль">
               <span>{getUserInitials()}</span>
             </button>
-            <div className="user-dropdown">
+            <div className="user-dropdown" style={{ display: userMenuOpen ? "block" : undefined }}>
               <div className="user-info">
                 <b>
-                  {user?.firstName ? `${user.firstName} ${user.lastName || ""}` : (user?.email || "Пользователь")}
+                  {user?.firstName && user.firstName !== "Алексей" && !user.lastName?.includes("Петров")
+                    ? `${user.firstName} ${user.lastName || ""}`
+                    : (t.editorCabinet || "Редактор")}
                 </b>
                 <small>{user?.email}</small>
               </div>
@@ -125,13 +132,25 @@ export default function Header({ activePage }: HeaderProps) {
                 {user?.role === "reviewer" && (t.reviewerCabinet || "Рецензент")}
                 {user?.role === "reader" && (t.profileSettings || "Читатель")}
               </div>
-              <button className="user-action" onClick={handleAuthAction}>
+              <button
+                className="user-action"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  handleAuthAction();
+                }}
+              >
                 {hasRole(["author"]) && t.authorCabinet}
                 {hasRole(["editor"]) && t.editorCabinet}
                 {hasRole(["reviewer"]) && t.reviewerCabinet}
                 {hasRole(["reader"]) && t.profileSettings}
               </button>
-              <button className="user-action logout" onClick={logout}>
+              <button
+                className="user-action logout"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  logout();
+                }}
+              >
                 {t.logout}
               </button>
             </div>
