@@ -195,8 +195,45 @@ export function incrementArticleCitations(articleId: string): StoredArticle[] {
   return updated;
 }
 
-export function assignReviewerToArticle(articleId: string, reviewerEmail: string, note?: string): StoredArticle[] {
+export interface StoredReviewAssignment {
+  id: string;
+  articleId: string;
+  articleTitle: string;
+  reviewerEmail: string;
+  reviewerName?: string;
+  assignedAt: string;
+  dueDate: string;
+  status: "INVITED" | "ACCEPTED" | "DECLINED" | "COMPLETED";
+  recommendation?: "ACCEPT" | "MINOR_REVISION" | "MAJOR_REVISION" | "REJECT";
+  commentsToAuthor?: string;
+  commentsToEditor?: string;
+  qualityScore?: number;
+  noveltyScore?: number;
+  note?: string;
+}
+
+export function getStoredReviewAssignments(): StoredReviewAssignment[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("expert_shared_cloud_assignments_v10");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveStoredReviewAssignments(assignments: StoredReviewAssignment[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("expert_shared_cloud_assignments_v10", JSON.stringify(assignments));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+export function assignReviewerToArticle(articleId: string, reviewerEmail: string, note?: string, reviewerName?: string): StoredArticle[] {
   const current = getStoredArticles();
+  const targetArticle = current.find((a) => a.id === articleId);
   const updated = current.map((a) => {
     if (a.id === articleId) {
       return {
@@ -212,6 +249,35 @@ export function assignReviewerToArticle(articleId: string, reviewerEmail: string
   });
   saveStoredArticles(updated);
 
+  const assignments = getStoredReviewAssignments();
+  const newAssignment: StoredReviewAssignment = {
+    id: "assign-" + Date.now(),
+    articleId,
+    articleTitle: targetArticle?.title || "Рукопись",
+    reviewerEmail,
+    reviewerName: reviewerName || "Эксперт",
+    assignedAt: new Date().toISOString(),
+    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    status: "INVITED",
+    note,
+  };
+
+  const existingIdx = assignments.findIndex((a) => a.articleId === articleId && a.reviewerEmail === reviewerEmail);
+  if (existingIdx >= 0) {
+    assignments[existingIdx] = newAssignment;
+  } else {
+    assignments.push(newAssignment);
+  }
+  saveStoredReviewAssignments(assignments);
+
+  if (typeof window !== "undefined") {
+    fetch("/api/articles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: articleId, status: "UNDER_REVIEW", reviewerEmail }),
+    }).catch(() => null);
+  }
+
   addNotificationToStore({
     id: "n-" + Date.now(),
     userRole: "all",
@@ -223,6 +289,66 @@ export function assignReviewerToArticle(articleId: string, reviewerEmail: string
   });
 
   return updated;
+}
+
+export function submitReviewerReportInStore(
+  assignmentId: string,
+  articleId: string,
+  recommendation: "ACCEPT" | "MINOR_REVISION" | "MAJOR_REVISION" | "REJECT",
+  commentsToAuthor: string,
+  commentsToEditor?: string,
+  qualityScore?: number,
+  noveltyScore?: number
+) {
+  const assignments = getStoredReviewAssignments();
+  const updatedAssignments = assignments.map((a) => {
+    if (a.id === assignmentId || a.articleId === articleId) {
+      return {
+        ...a,
+        status: "COMPLETED" as const,
+        recommendation,
+        commentsToAuthor,
+        commentsToEditor,
+        qualityScore: qualityScore || 5,
+        noveltyScore: noveltyScore || 5,
+      };
+    }
+    return a;
+  });
+  saveStoredReviewAssignments(updatedAssignments);
+
+  let newStatus: StoredArticle["status"] = "UNDER_REVIEW";
+  if (recommendation === "ACCEPT") {
+    newStatus = "ACCEPTED";
+  } else if (recommendation === "REJECT") {
+    newStatus = "REJECTED";
+  } else {
+    newStatus = "REVISION_REQUIRED";
+  }
+
+  const articles = getStoredArticles();
+  const updatedArticles = articles.map((a) => {
+    if (a.id === articleId) {
+      return {
+        ...a,
+        status: newStatus,
+        reviewNote: commentsToAuthor,
+        lastUpdated: new Date().toISOString().split("T")[0],
+      };
+    }
+    return a;
+  });
+  saveStoredArticles(updatedArticles);
+
+  addNotificationToStore({
+    id: "n-" + Date.now(),
+    userRole: "editor",
+    title: "📝 Получена рецензия от эксперта",
+    message: `Рецензирование статьи завершено. Рекомендация: ${recommendation}`,
+    isRead: false,
+    type: "status",
+    createdAt: new Date().toISOString(),
+  });
 }
 
 export function updateArticleIssueInStore(articleId: string, issueId: string, pages?: string): StoredArticle[] {

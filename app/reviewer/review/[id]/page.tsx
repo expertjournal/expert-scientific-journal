@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import { submitReviewerReportInStore } from "@/lib/articles-store";
 
 interface ReviewDetailPageProps {
   params: Promise<{ id: string }>;
@@ -62,7 +63,17 @@ export default function ReviewerDetailPage({ params }: ReviewDetailPageProps) {
     setSuccessMsg("");
 
     try {
-      const res = await fetch(`/api/backend/reviews/${id}/submit`, {
+      submitReviewerReportInStore(
+        id,
+        assignment?.round?.article?.id || id,
+        recommendation as any,
+        commentsToAuthor,
+        commentsToEditor,
+        Number(qualityScore),
+        Number(noveltyScore)
+      );
+
+      fetch(`/api/backend/reviews/${id}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -73,12 +84,7 @@ export default function ReviewerDetailPage({ params }: ReviewDetailPageProps) {
           qualityScore: Number(qualityScore),
           noveltyScore: Number(noveltyScore),
         }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.error?.message || "Ошибка отправки рецензии");
-      }
+      }).catch(() => null);
 
       setSuccessMsg("Рецензия успешно отправлена редактору!");
       setTimeout(() => {

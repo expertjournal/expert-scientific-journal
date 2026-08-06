@@ -175,6 +175,7 @@ export default function EditorDashboard() {
   const [chatMessage, setChatMessage] = useState("");
   const [selectedAuthorEmail, setSelectedAuthorEmail] = useState<string>("all");
   const [selectedIssuesMap, setSelectedIssuesMap] = useState<Record<string, string>>({});
+  const [reviewerSearchQuery, setReviewerSearchQuery] = useState("");
 
   const loadEditorData = useCallback(async () => {
     try {
@@ -1415,56 +1416,121 @@ export default function EditorDashboard() {
 
         {/* ASSIGN REVIEWER MODAL */}
         {showAssignModal && targetArticleForAssign && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-            <div style={{ background: "#ffffff", borderRadius: "12px", width: "100%", maxWidth: "520px", padding: "28px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)" }}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", backdropFilter: "blur(4px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+            <div style={{ background: "#ffffff", borderRadius: "16px", width: "100%", maxWidth: "620px", padding: "28px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)", border: "1px solid #e2e8f0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: 0 }}>👨‍⚖️ Назначить рецензента</h3>
+                <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: 0 }}>👨‍⚖️ Назначить рецензента (Assign Reviewer)</h3>
                 <button onClick={() => setShowAssignModal(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#64748b" }}>✕</button>
               </div>
 
               <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
-                <div style={{ fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "700" }}>Рукопись:</div>
-                <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a", marginTop: "2px" }}>{targetArticleForAssign.title}</div>
+                <div style={{ fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "700" }}>Рукопись для экспертизы:</div>
+                <div style={{ fontSize: "13px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{targetArticleForAssign.title}</div>
+                <div style={{ fontSize: "11px", color: "#2563eb", marginTop: "2px" }}>Категория: {targetArticleForAssign.scientificField || "Правовые исследования"}</div>
+              </div>
+
+              {/* SEARCH REVIEWER INPUT */}
+              <div style={{ marginBottom: "12px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
+                  🔍 Поиск рецензентов в реестре системы:
+                </label>
+                <input
+                  type="text"
+                  value={reviewerSearchQuery}
+                  onChange={(e) => setReviewerSearchQuery(e.target.value)}
+                  placeholder="Поиск по имени, email или организации..."
+                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "13px", outline: "none" }}
+                />
+              </div>
+
+              {/* REGISTERED REVIEWERS LIST */}
+              <div style={{ maxHeight: "180px", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "16px", background: "#fafafa" }}>
+                {(() => {
+                  const reviewersPool = systemUsers.length > 0
+                    ? systemUsers
+                    : [
+                        { id: "rev-1", fullName: "Д-р А. И. Рахимов", email: "reviewer@expert.uz", role: "REVIEWER", institution: "Ташкентский Государственный Юридический Университет" },
+                        { id: "rev-2", fullName: "Проф. Е. В. Смирнова", email: "smirnova@journal.ru", role: "REVIEWER", institution: "Институт Правовых Исследований" },
+                        { id: "rev-3", fullName: "Д-р Б. Т. Каримов", email: "karimov@expert.uz", role: "REVIEWER", institution: "Национальный Центр Права" },
+                      ];
+
+                  const filtered = reviewersPool.filter((u) => {
+                    if (!reviewerSearchQuery.trim()) return true;
+                    const q = reviewerSearchQuery.toLowerCase();
+                    return (u.fullName || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q);
+                  });
+
+                  if (filtered.length === 0) {
+                    return <div style={{ padding: "16px", textAlign: "center", fontSize: "12px", color: "#94a3b8" }}>Пользователи не найдены. Введите email ниже вручную.</div>;
+                  }
+
+                  return filtered.map((u) => {
+                    const isSelected = reviewerEmailInput.toLowerCase() === u.email.toLowerCase();
+                    return (
+                      <div
+                        key={u.id || u.email}
+                        onClick={() => setReviewerEmailInput(u.email)}
+                        style={{
+                          padding: "10px 14px",
+                          borderBottom: "1px solid #f1f5f9",
+                          background: isSelected ? "#eff6ff" : "#ffffff",
+                          cursor: "pointer",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          transition: "background 0.15s ease",
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>
+                            👤 {u.fullName} {isSelected && <span style={{ color: "#2563eb", fontSize: "11px" }}>✓ Выбран</span>}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#64748b" }}>{u.email} • {u.institution || "Эксперт ESJ"}</div>
+                        </div>
+                        <span style={{ fontSize: "11px", fontWeight: "700", background: isSelected ? "#2563eb" : "#f1f5f9", color: isSelected ? "#fff" : "#475569", padding: "3px 8px", borderRadius: "6px" }}>
+                          {isSelected ? "Выбран" : "Выбрать"}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
 
               <div style={{ marginBottom: "16px" }}>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
-                  Email рецензента (эксперта):
+                  Email выбранного рецензента *
                 </label>
                 <input
                   type="email"
                   value={reviewerEmailInput}
                   onChange={(e) => setReviewerEmailInput(e.target.value)}
                   placeholder="например: reviewer@expert.uz"
-                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px", outline: "none" }}
+                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "13px", outline: "none" }}
                 />
-                <small style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "4px" }}>
-                  Укажите email зарегистрированного эксперта. Ему станет доступна эта статья в кабинете рецензента.
-                </small>
               </div>
 
               <div style={{ marginBottom: "20px" }}>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
-                  Инструкции / Замечания для рецензента:
+                  Инструкции / Сопроводительное письмо для рецензента:
                 </label>
                 <textarea
                   rows={3}
                   value={reviewerNoteInput}
                   onChange={(e) => setReviewerNoteInput(e.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "12px", outline: "none" }}
+                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "12px", outline: "none" }}
                 />
               </div>
 
               <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 <button
                   onClick={() => setShowAssignModal(false)}
-                  style={{ padding: "10px 18px", border: "1px solid #cbd5e1", background: "#fff", borderRadius: "6px", fontWeight: "700", cursor: "pointer", color: "#475569" }}
+                  style={{ padding: "10px 18px", border: "1px solid #cbd5e1", background: "#fff", borderRadius: "8px", fontWeight: "700", cursor: "pointer", color: "#475569" }}
                 >
                   Отмена
                 </button>
                 <button
                   onClick={handleConfirmAssignReviewer}
-                  style={{ padding: "10px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", cursor: "pointer" }}
+                  style={{ padding: "10px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}
                 >
                   ↗ Назначить и отправить
                 </button>
