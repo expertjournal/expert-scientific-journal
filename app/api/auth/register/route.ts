@@ -39,10 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       requiresVerification: true,
       email: normalizedEmail,
-      message: emailSent
-        ? "6-значный код подтверждения отправлен на ваш email адрес."
-        : "Код подтверждения сгенерирован.",
-      sampleCode: !isLiveEmailConfigured ? otpCode : undefined,
+      message: "6-значный код подтверждения отправлен на ваш email адрес.",
     });
   } catch (error: any) {
     console.error("Register route error:", error);

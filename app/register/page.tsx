@@ -282,12 +282,6 @@ export default function RegisterPage() {
         ) : (
           <form className="register-form" onSubmit={handleVerifyOtp}>
             {infoMessage && <div className="info-banner" style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af", padding: "0.75rem", borderRadius: "8px", fontSize: "0.85rem", marginBottom: "1rem", textAlign: "center" }}>{infoMessage}</div>}
-            
-            {sampleCodeHint && (
-              <div className="demo-code-banner" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", padding: "0.75rem", borderRadius: "8px", fontSize: "0.85rem", marginBottom: "1rem", textAlign: "center" }}>
-                🔑 Ваш тестовый OTP-код: <strong>{sampleCodeHint}</strong>
-              </div>
-            )}
 
             {errors.otp && <div className="form-error">{errors.otp}</div>}
 

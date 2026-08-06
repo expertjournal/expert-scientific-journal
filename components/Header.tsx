@@ -136,13 +136,27 @@ export default function Header({ activePage }: HeaderProps) {
                 className="user-action"
                 onClick={() => {
                   setUserMenuOpen(false);
-                  handleAuthAction();
+                  if (hasRole(["editor"])) {
+                    router.push("/editor");
+                  } else if (hasRole(["reviewer"])) {
+                    router.push("/reviewer/dashboard");
+                  } else {
+                    router.push("/author");
+                  }
                 }}
               >
-                {hasRole(["author"]) && t.authorCabinet}
-                {hasRole(["editor"]) && t.editorCabinet}
-                {hasRole(["reviewer"]) && t.reviewerCabinet}
-                {hasRole(["reader"]) && t.profileSettings}
+                {hasRole(["editor"]) ? `⚙️ ${t.editorCabinet || "Кабинет Редактора"}` : hasRole(["reviewer"]) ? `👨‍⚖️ ${t.reviewerCabinet || "Кабинет Рецензента"}` : `📝 ${t.authorCabinet || "Кабинет Автора"}`}
+              </button>
+              
+              <button
+                className="user-action"
+                style={{ background: "#f8fafc", color: "#2563eb", fontWeight: "bold" }}
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  router.push("/reviewer/dashboard");
+                }}
+              >
+                👨‍⚖️ {t.reviewerCabinet || "Кабинет Рецензента"}
               </button>
               <button
                 className="user-action logout"
