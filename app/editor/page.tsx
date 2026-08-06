@@ -358,9 +358,9 @@ export default function EditorDashboard() {
   };
 
   const getUserInitials = () => {
-    if (user) {
-      const f = user.firstName ? user.firstName.charAt(0) : "E";
-      const l = user.lastName ? user.lastName.charAt(0) : "D";
+    if (user && user.firstName && user.firstName !== "Алексей") {
+      const f = user.firstName.charAt(0);
+      const l = user.lastName ? user.lastName.charAt(0) : "";
       return `${f}${l}`.toUpperCase();
     }
     return "ED";
@@ -615,8 +615,8 @@ export default function EditorDashboard() {
               <span>{getUserInitials()}</span>
             )}
             <div>
-              <b>{user?.firstName || "Главный"} {user?.lastName || "Редактор"}</b>
-              <small>{t.editorCabinet || "Редакция журнала"}</small>
+              <b>{user?.firstName && user.firstName !== "Алексей" && !user.lastName?.includes("Петров") ? `${user.firstName} ${user.lastName || ""}` : (t.editorCabinet || "Редактор")}</b>
+              <small>{t.editorPanelTitle || "Редакция журнала"}</small>
             </div>
           </div>
         </header>

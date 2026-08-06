@@ -73,8 +73,8 @@ export async function POST(request: Request) {
 
     if (normalizedEmail.includes("editor") || normalizedEmail.includes("redaktor")) {
       role = "editor";
-      firstName = "Алексей";
-      lastName = "Петров (Главный Редактор)";
+      firstName = "Главный";
+      lastName = "Редактор";
     } else if (normalizedEmail.includes("admin")) {
       role = "admin";
       firstName = "Администратор";
