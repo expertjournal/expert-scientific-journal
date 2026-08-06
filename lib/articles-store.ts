@@ -83,7 +83,9 @@ export function clearAllClientCaches() {
     localStorage.removeItem(ARTICLES_KEY);
     localStorage.removeItem(MESSAGES_KEY);
     localStorage.removeItem(NOTIFICATIONS_KEY);
+    localStorage.removeItem(REVIEWER_APPS_KEY);
     localStorage.removeItem("expert_user");
+    localStorage.removeItem("expert_shared_cloud_assignments_v10");
     localStorage.removeItem("expert_review_assignments");
   } catch (e) {}
 }

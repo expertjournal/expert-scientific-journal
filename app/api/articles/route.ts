@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readServerDB, writeServerDB } from "@/lib/server-db";
+import { readServerDB, writeServerDB, DBArticle } from "@/lib/server-db";
 import { supabase } from "@/lib/supabase-client";
-
 import { verifyJWT } from "@/lib/jwt";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +14,7 @@ export async function GET(req: NextRequest) {
     const userOnly = searchParams.get("userOnly") === "true";
     const authorEmailParam = (searchParams.get("email") || "").toLowerCase().trim();
 
-    let mapped: any[] = [];
+    let allArticles: DBArticle[] = [];
 
     const { data, error } = await supabase
       .from("articles")
@@ -23,7 +22,7 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (!error && data && data.length > 0) {
-      mapped = data.map((a: any) => ({
+      allArticles = data.map((a: any) => ({
         id: a.id,
         title: a.title,
         abstract: a.abstract,
@@ -34,7 +33,9 @@ export async function GET(req: NextRequest) {
         submissionDate: a.submission_date || a.created_at?.split("T")[0],
         lastUpdated: a.last_updated || a.updated_at?.split("T")[0],
         authorName: a.author_name || "Автор",
-        authorEmail: a.author_email || "",
+        authorEmail: (a.author_email || "").toLowerCase().trim(),
+        authorId: a.author_id || a.user_id,
+        userId: a.user_id || a.author_id,
         fileName: a.file_name,
         fileUrl: a.file_url,
         doi: a.doi,
@@ -44,29 +45,71 @@ export async function GET(req: NextRequest) {
       }));
     } else {
       const db = readServerDB();
-      mapped = db.articles || [];
+      allArticles = (db.articles || []).map((a) => ({
+        ...a,
+        authorEmail: (a.authorEmail || "").toLowerCase().trim(),
+      }));
     }
 
-    // Strictly filter for Author Users
-    if (userOnly || (authUser && authUser.role === "author")) {
-      const targetEmail = (authUser?.email || authorEmailParam || "").toLowerCase().trim();
-      if (!targetEmail) {
-        return NextResponse.json([]);
-      }
-      mapped = mapped.filter((a) => (a.authorEmail || "").toLowerCase().trim() === targetEmail);
+    // STRICT OWNER AUTHORIZATION FILTERING
+    let filtered: DBArticle[] = [];
+
+    if (authUser && (authUser.role === "editor" || authUser.role === "admin")) {
+      // Editor / Admin can view all articles
+      filtered = allArticles;
+    } else if (authUser) {
+      // Author / Registered User: strictly view ONLY owned articles
+      const sessionEmail = (authUser.email || "").toLowerCase().trim();
+      const sessionId = authUser.id || authUser.sub;
+      const targetEmail = authorEmailParam || sessionEmail;
+
+      filtered = allArticles.filter((a) => {
+        const aEmail = (a.authorEmail || "").toLowerCase().trim();
+        return aEmail === sessionEmail || aEmail === targetEmail || a.userId === sessionId || a.authorId === sessionId;
+      });
+    } else if (userOnly && authorEmailParam) {
+      // Direct email param filter fallback
+      filtered = allArticles.filter((a) => (a.authorEmail || "").toLowerCase().trim() === authorEmailParam);
+    } else {
+      // Unauthenticated Guests: strictly view ONLY published articles
+      filtered = allArticles.filter((a) => a.status === "PUBLISHED");
     }
 
-    return NextResponse.json(mapped);
+    return NextResponse.json(filtered);
   } catch (e) {
     console.warn("Supabase GET articles fallback to local DB:", e);
     const db = readServerDB();
-    return NextResponse.json(db.articles);
+    return NextResponse.json(db.articles || []);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const article = await req.json();
+    const token = req.cookies.get("expert_token")?.value;
+    const authUser = token ? verifyJWT(token) : null;
+
+    const payload = await req.json();
+
+    // Mandate server authenticated identity if present
+    const ownerEmail = (authUser?.email || payload.authorEmail || "").toLowerCase().trim();
+    const ownerId = authUser?.id || authUser?.sub || payload.authorId || payload.userId || "usr_" + Date.now();
+    const ownerName = authUser?.firstName
+      ? `${authUser.firstName} ${authUser.lastName || ""}`.trim()
+      : payload.authorName || "Автор";
+
+    if (!ownerEmail) {
+      return NextResponse.json({ message: "Укажите Email автора" }, { status: 400 });
+    }
+
+    const article: DBArticle = {
+      ...payload,
+      authorEmail: ownerEmail,
+      authorId: ownerId,
+      userId: ownerId,
+      authorName: ownerName,
+      submissionDate: payload.submissionDate || new Date().toISOString().split("T")[0],
+      lastUpdated: new Date().toISOString().split("T")[0],
+    };
 
     // 1. Sync local disk DB
     const db = readServerDB();
@@ -88,10 +131,12 @@ export async function POST(req: NextRequest) {
         language: article.language,
         keywords: article.keywords || [],
         status: article.status,
-        submission_date: article.submissionDate || new Date().toISOString().split("T")[0],
-        last_updated: article.lastUpdated || new Date().toISOString().split("T")[0],
+        submission_date: article.submissionDate,
+        last_updated: article.lastUpdated,
         author_name: article.authorName,
         author_email: article.authorEmail,
+        author_id: article.authorId,
+        user_id: article.userId,
         file_name: article.fileName,
         file_url: article.fileUrl,
         doi: article.doi,

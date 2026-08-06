@@ -1,5 +1,22 @@
 {
-  "articles": [],
+  "articles": [
+    {
+      "id": "art_a_100",
+      "title": "Article A Title",
+      "authorEmail": "userA_audit@expert.uz",
+      "authorId": "usr_a_100",
+      "userId": "usr_a_100",
+      "status": "SUBMITTED"
+    },
+    {
+      "id": "art_b_200",
+      "title": "Article B Title",
+      "authorEmail": "userB_audit@expert.uz",
+      "authorId": "usr_b_200",
+      "userId": "usr_b_200",
+      "status": "SUBMITTED"
+    }
+  ],
   "issues": [],
   "messages": [],
   "notifications": [],

@@ -23,8 +23,30 @@ export interface DBUser {
   lastLoginAt?: string;
 }
 
+export interface DBArticle {
+  id: string;
+  title: string;
+  abstract?: string;
+  scientificField?: string;
+  language?: string;
+  keywords?: string[];
+  status: "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "REVISION_REQUIRED" | "ACCEPTED" | "REJECTED" | "PUBLISHED" | "WITHDRAWN";
+  submissionDate?: string;
+  lastUpdated?: string;
+  authorId?: string;
+  userId?: string;
+  authorEmail: string;
+  authorName?: string;
+  fileName?: string;
+  fileUrl?: string;
+  doi?: string;
+  issueId?: string;
+  reviewNote?: string;
+  pages?: string;
+}
+
 export interface DBData {
-  articles: any[];
+  articles: DBArticle[];
   issues: any[];
   messages: any[];
   users: DBUser[];

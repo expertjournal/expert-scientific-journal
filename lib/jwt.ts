@@ -2,6 +2,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "expert_journal_super_secret_produc
 
 export interface JWTPayload {
   sub: string;
+  id?: string;
   email: string;
   role: string;
   firstName?: string;
