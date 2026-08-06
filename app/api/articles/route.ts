@@ -2,17 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { readServerDB, writeServerDB } from "@/lib/server-db";
 import { supabase } from "@/lib/supabase-client";
 
+import { verifyJWT } from "@/lib/jwt";
+
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const token = req.cookies.get("expert_token")?.value;
+    const authUser = token ? verifyJWT(token) : null;
+
+    const { searchParams } = new URL(req.url);
+    const userOnly = searchParams.get("userOnly") === "true";
+    const authorEmailParam = (searchParams.get("email") || "").toLowerCase().trim();
+
+    let mapped: any[] = [];
+
     const { data, error } = await supabase
       .from("articles")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (!error && data && data.length > 0) {
-      const mapped = data.map((a: any) => ({
+      mapped = data.map((a: any) => ({
         id: a.id,
         title: a.title,
         abstract: a.abstract,
@@ -23,7 +34,7 @@ export async function GET() {
         submissionDate: a.submission_date || a.created_at?.split("T")[0],
         lastUpdated: a.last_updated || a.updated_at?.split("T")[0],
         authorName: a.author_name || "Автор",
-        authorEmail: a.author_email || "author@journal.ru",
+        authorEmail: a.author_email || "",
         fileName: a.file_name,
         fileUrl: a.file_url,
         doi: a.doi,
@@ -31,14 +42,26 @@ export async function GET() {
         reviewNote: a.review_note,
         pages: a.pages,
       }));
-      return NextResponse.json(mapped);
+    } else {
+      const db = readServerDB();
+      mapped = db.articles || [];
     }
+
+    // Strictly filter for Author Users
+    if (userOnly || (authUser && authUser.role === "author")) {
+      const targetEmail = (authUser?.email || authorEmailParam || "").toLowerCase().trim();
+      if (!targetEmail) {
+        return NextResponse.json([]);
+      }
+      mapped = mapped.filter((a) => (a.authorEmail || "").toLowerCase().trim() === targetEmail);
+    }
+
+    return NextResponse.json(mapped);
   } catch (e) {
     console.warn("Supabase GET articles fallback to local DB:", e);
+    const db = readServerDB();
+    return NextResponse.json(db.articles);
   }
-
-  const db = readServerDB();
-  return NextResponse.json(db.articles);
 }
 
 export async function POST(req: NextRequest) {

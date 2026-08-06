@@ -64,6 +64,17 @@ const ISSUES_KEY = "expert_shared_cloud_issues_v10_prod_clean";
 const MESSAGES_KEY = "expert_shared_cloud_messages_v10_prod_clean";
 const NOTIFICATIONS_KEY = "expert_shared_cloud_notifications_v10_prod_clean";
 
+export function clearAllClientCaches() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(ARTICLES_KEY);
+    localStorage.removeItem(MESSAGES_KEY);
+    localStorage.removeItem(NOTIFICATIONS_KEY);
+    localStorage.removeItem("expert_user");
+    localStorage.removeItem("expert_review_assignments");
+  } catch (e) {}
+}
+
 const INITIAL_ISSUES: StoredIssue[] = [];
 const INITIAL_ARTICLES: StoredArticle[] = [];
 

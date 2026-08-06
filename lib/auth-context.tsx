@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { clearAllClientCaches } from "./articles-store";
 
 export type UserRole = "author" | "editor" | "reader" | "admin" | "reviewer";
 
@@ -195,9 +196,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Logout error:", error);
     } finally {
       setUser(null);
-      try {
-        localStorage.removeItem("expert_user");
-      } catch (e) {}
+      clearAllClientCaches();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     }
   };
 
