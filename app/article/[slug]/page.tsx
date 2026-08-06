@@ -25,6 +25,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   const issues = getStoredIssues();
 
   const article = articles.find((a) => {
+    if (a.status !== "PUBLISHED") return false;
     const computedSlug = MetadataService.slugify(a.title, a.id);
     return a.id === slug || computedSlug === slug || a.doi?.includes(slug);
   });
@@ -33,6 +34,10 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     return {
       title: "Статья не найдена | Expert Scientific Journal",
       description: "Запрошенная научная публикация не найдена в реестре журнала.",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
@@ -74,6 +79,7 @@ export default async function ArticleSlugPage({ params }: ArticlePageProps) {
   const issues = getStoredIssues();
 
   const article = articles.find((a) => {
+    if (a.status !== "PUBLISHED") return false;
     const computedSlug = MetadataService.slugify(a.title, a.id);
     return a.id === slug || computedSlug === slug || a.doi?.includes(slug);
   });

@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
-    const articles = getStoredArticles();
-    const issues = getStoredIssues();
+    const articles = getStoredArticles().filter((a) => a.status === "PUBLISHED");
+    const issues = getStoredIssues().filter((i) => i.status === "PUBLISHED");
 
     const formattedArticles = articles.map((a) => ({
       id: a.id,

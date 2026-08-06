@@ -10,8 +10,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/article/", "/journal/", "/archive/", "/about/", "/search/"],
-        disallow: ["/admin/", "/editor/", "/author/", "/api/auth/", "/_next/"],
+        allow: ["/", "/article/", "/journal/", "/archive/", "/about/", "/search/", "/doi/"],
+        disallow: ["/admin/", "/editor/", "/author/", "/reviewer/", "/login", "/register", "/forgot-password", "/reset-password", "/unauthorized", "/api/auth/"],
       },
       {
         userAgent: "Googlebot",
