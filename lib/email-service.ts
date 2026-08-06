@@ -5,12 +5,44 @@ export interface SendEmailPayload {
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailPayload): Promise<boolean> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const smtpHost = process.env.SMTP_HOST || process.env.GMAIL_SMTP_HOST;
+  const smtpHost = process.env.SMTP_HOST || process.env.GMAIL_SMTP_HOST || "smtp.gmail.com";
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const resendApiKey = process.env.RESEND_API_KEY;
 
-  // 1. Resend API Transport (Resend.com)
+  // 1. Prioritize Gmail SMTP if configured
+  if (smtpUser && smtpPass) {
+    try {
+      // @ts-ignore
+      const nodemailer = await import("nodemailer").catch(() => null);
+      if (nodemailer) {
+        const cleanPass = smtpPass.replace(/\s+/g, ""); // Strip spaces from 16-char Google App Password
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: Number(process.env.SMTP_PORT) || 465,
+          secure: Number(process.env.SMTP_PORT) === 587 ? false : true,
+          auth: {
+            user: smtpUser.trim(),
+            pass: cleanPass,
+          },
+        });
+
+        await transporter.sendMail({
+          from: `Expert Scientific Journal <${smtpUser.trim()}>`,
+          to,
+          subject,
+          html,
+        });
+
+        console.log(`[SMTP EMAIL SENT SUCCESS] To: ${to} via ${smtpHost}`);
+        return true;
+      }
+    } catch (smtpErr) {
+      console.error("[SMTP EMAIL ERROR]", smtpErr);
+    }
+  }
+
+  // 2. Fallback to Resend API
   if (resendApiKey) {
     try {
       const cleanKey = resendApiKey.trim();
@@ -30,7 +62,7 @@ export async function sendEmail({ to, subject, html }: SendEmailPayload): Promis
       });
 
       if (response.ok) {
-        console.log(`[RESEND EMAIL SENT] To: ${to} | Subject: ${subject}`);
+        console.log(`[RESEND EMAIL SENT SUCCESS] To: ${to} | Subject: ${subject}`);
         return true;
       }
       const errJson = await response.json().catch(() => null);
@@ -40,38 +72,7 @@ export async function sendEmail({ to, subject, html }: SendEmailPayload): Promis
     }
   }
 
-  // 2. Nodemailer SMTP (Dynamic import)
-  if (smtpHost && smtpUser && smtpPass) {
-    try {
-      // @ts-ignore
-      const nodemailer = await import("nodemailer").catch(() => null);
-      if (nodemailer) {
-        const transporter = nodemailer.createTransport({
-          host: smtpHost,
-          port: Number(process.env.SMTP_PORT) || 465,
-          secure: Number(process.env.SMTP_PORT) === 587 ? false : true,
-          auth: {
-            user: smtpUser,
-            pass: smtpPass,
-          },
-        });
-
-        await transporter.sendMail({
-          from: `Expert Scientific Journal <${smtpUser}>`,
-          to,
-          subject,
-          html,
-        });
-
-        console.log(`[SMTP EMAIL SENT] To: ${to} via ${smtpHost}`);
-        return true;
-      }
-    } catch (smtpErr) {
-      console.error("[SMTP EMAIL ERROR]", smtpErr);
-    }
-  }
-
-  console.log(`[EMAIL DISPATCH] To: ${to} | Subject: ${subject}`);
+  console.log(`[EMAIL DISPATCH MOCK] To: ${to} | Subject: ${subject}`);
   return true;
 }
 
