@@ -29,6 +29,7 @@ export interface DBData {
   messages: any[];
   users: DBUser[];
   reviewerApps: any[];
+  reviewAssignments: any[];
 }
 
 const DEFAULT_DATA: DBData = {
@@ -37,6 +38,7 @@ const DEFAULT_DATA: DBData = {
   messages: [],
   users: [],
   reviewerApps: [],
+  reviewAssignments: [],
 };
 
 export function readServerDB(): DBData {
@@ -56,6 +58,7 @@ export function readServerDB(): DBData {
       messages: Array.isArray(parsed.messages) ? parsed.messages : [],
       users: Array.isArray(parsed.users) ? parsed.users : [],
       reviewerApps: Array.isArray(parsed.reviewerApps) ? parsed.reviewerApps : [],
+      reviewAssignments: Array.isArray(parsed.reviewAssignments) ? parsed.reviewAssignments : [],
     };
   } catch (e) {
     console.error("Error reading server DB:", e);

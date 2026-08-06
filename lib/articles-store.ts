@@ -302,6 +302,12 @@ export function assignReviewerToArticle(articleId: string, reviewerEmail: string
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: articleId, status: "UNDER_REVIEW", reviewerEmail }),
     }).catch(() => null);
+
+    fetch("/api/review-assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAssignment),
+    }).catch(() => null);
   }
 
   addNotificationToStore({
@@ -342,6 +348,23 @@ export function submitReviewerReportInStore(
     return a;
   });
   saveStoredReviewAssignments(updatedAssignments);
+
+  if (typeof window !== "undefined") {
+    fetch("/api/review-assignments", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: assignmentId,
+        articleId,
+        status: "COMPLETED",
+        recommendation,
+        commentsToAuthor,
+        commentsToEditor,
+        qualityScore,
+        noveltyScore,
+      }),
+    }).catch(() => null);
+  }
 
   let newStatus: StoredArticle["status"] = "UNDER_REVIEW";
   if (recommendation === "ACCEPT") {
@@ -638,12 +661,13 @@ export function markNotificationsAsReadInStore(): StoredNotification[] {
 export async function syncStoreWithServer() {
   if (typeof window === "undefined") return;
   try {
-    const [resArt, resIss, resMsg, resNotif, resApps] = await Promise.all([
+    const [resArt, resIss, resMsg, resNotif, resApps, resAssignments] = await Promise.all([
       fetch("/api/articles").then((r) => r.json()).catch(() => []),
       fetch("/api/issues").then((r) => r.json()).catch(() => []),
       fetch("/api/messages").then((r) => r.json()).catch(() => []),
       fetch("/api/notifications").then((r) => r.json()).catch(() => []),
       fetch("/api/reviewer-apps").then((r) => r.json()).catch(() => []),
+      fetch("/api/review-assignments").then((r) => r.json()).catch(() => []),
     ]);
 
     // 1. Articles Sync & Protection
@@ -696,6 +720,13 @@ export async function syncStoreWithServer() {
       localApps.forEach((app) => mergedAppsMap.set(app.id, app));
       resApps.forEach((app: StoredReviewerApplication) => mergedAppsMap.set(app.id, app));
       saveStoredReviewerApplications(Array.from(mergedAppsMap.values()));
+    }
+    if (Array.isArray(resAssignments) && resAssignments.length > 0) {
+      const localAssignments = getStoredReviewAssignments();
+      const mergedAssignMap = new Map<string, StoredReviewAssignment>();
+      localAssignments.forEach((as) => mergedAssignMap.set(as.id, as));
+      resAssignments.forEach((as: StoredReviewAssignment) => mergedAssignMap.set(as.id, as));
+      saveStoredReviewAssignments(Array.from(mergedAssignMap.values()));
     }
   } catch (e) {
     console.error("syncStoreWithServer error:", e);
