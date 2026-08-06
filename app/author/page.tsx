@@ -16,6 +16,12 @@ import {
   downloadManuscriptFile,
   syncStoreWithServer,
   searchArticlesInStore,
+  getStoredReviewerApplications,
+  addReviewerApplication,
+  getStoredReviewAssignments,
+  submitReviewerReportInStore,
+  StoredReviewerApplication,
+  StoredReviewAssignment,
 } from "@/lib/articles-store";
 import { useSupabaseRealtime } from "@/lib/supabase-realtime";
 import { useLanguage } from "@/lib/i18n-context";
@@ -165,6 +171,24 @@ export default function AuthorDashboard() {
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<StoredMessage[]>([]);
 
+  // Reviewer Application & Peer Review Workspace State
+  const [reviewerApps, setReviewerApps] = useState<StoredReviewerApplication[]>([]);
+  const [assignedReviews, setAssignedReviews] = useState<StoredReviewAssignment[]>([]);
+  const [appField, setAppField] = useState("Право и правовые исследования");
+  const [appDegree, setAppDegree] = useState("К.ю.н. / PhD in Law");
+  const [appInstitution, setAppInstitution] = useState("");
+  const [appExperience, setAppExperience] = useState("");
+  const [appSuccessMsg, setAppSuccessMsg] = useState("");
+
+  // Review Evaluation Modal State
+  const [activeReviewItem, setActiveReviewItem] = useState<StoredReviewAssignment | null>(null);
+  const [reviewRecommendation, setReviewRecommendation] = useState<"ACCEPT" | "MINOR_REVISION" | "MAJOR_REVISION" | "REJECT">("ACCEPT");
+  const [reviewCommentsAuthor, setReviewCommentsAuthor] = useState("");
+  const [reviewCommentsEditor, setReviewCommentsEditor] = useState("");
+  const [reviewQualityScore, setReviewQualityScore] = useState(5);
+  const [reviewNoveltyScore, setReviewNoveltyScore] = useState(5);
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState("");
+
   const handleOpenEditModal = (article: ApiArticle) => {
     setEditingArticle(article);
     setEditTitle(article.title);
@@ -262,6 +286,46 @@ export default function AuthorDashboard() {
     }
   };
 
+  const handleSubmitReviewerApp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const newApp: StoredReviewerApplication = {
+      id: "rev-app-" + Date.now(),
+      userEmail: user.email,
+      userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+      scientificField: appField,
+      degree: appDegree,
+      institution: appInstitution || user.institution || "Институт / ВУЗ",
+      experience: appExperience,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    };
+    addReviewerApplication(newApp);
+    setReviewerApps(getStoredReviewerApplications());
+    setAppSuccessMsg("🎉 Заявка отправлена Главного редактору! Ожидайте одобрения доступа.");
+    setTimeout(() => setAppSuccessMsg(""), 5000);
+  };
+
+  const handleSubmitReviewReport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeReviewItem) return;
+    submitReviewerReportInStore(
+      activeReviewItem.id,
+      activeReviewItem.articleId,
+      reviewRecommendation,
+      reviewCommentsAuthor,
+      reviewCommentsEditor,
+      reviewQualityScore,
+      reviewNoveltyScore
+    );
+    setReviewSuccessMsg("✅ Рецензия успешно отправлена Редакции!");
+    setTimeout(() => {
+      setReviewSuccessMsg("");
+      setActiveReviewItem(null);
+    }, 2000);
+    loadAuthorData();
+  };
+
   const loadAuthorData = useCallback(async () => {
     try {
       setFetching(true);
@@ -314,6 +378,15 @@ export default function AuthorDashboard() {
 
       setArticles(loadedArticles);
       setChatMessages(getStoredMessages());
+
+      const apps = getStoredReviewerApplications();
+      setReviewerApps(apps);
+
+      const allAssignments = getStoredReviewAssignments();
+      const myAssignments = allAssignments.filter(
+        (assign) => (assign.reviewerEmail || "").toLowerCase().trim() === userEmail
+      );
+      setAssignedReviews(myAssignments);
     } catch (err) {
       console.error("Author dashboard fetch error:", err);
     } finally {
@@ -546,26 +619,44 @@ export default function AuthorDashboard() {
           <small>scientific journal</small>
         </a>
         <div className="author-nav">
-          {[
-            { icon: "⌂", id: "dashboard", label: t.dashboard },
-            { icon: "▤", id: "myArticles", label: t.myArticles, count: articles.length },
-            { icon: "↗", id: "submitArticle", label: t.submitArticle },
-            { icon: "✉", id: "messages", label: t.messages },
-            { icon: "⚙", id: "settings", label: t.settings },
-          ].map((n) => {
-            const isCurrent = activeTab === n.id || activeTab === n.label || (activeTab === "Главная" && n.id === "dashboard") || (activeTab === "Подать статью" && n.id === "submitArticle") || (activeTab === "Мои статьи" && n.id === "myArticles") || (activeTab === "Сообщения" && n.id === "messages") || (activeTab === "Настройки" && n.id === "settings");
-            return (
-              <button
-                className={isCurrent ? "nav-current" : ""}
-                key={n.id}
-                onClick={() => setActiveTab(n.id)}
-              >
-                <i>{n.icon}</i>
-                <span>{n.label}</span>
-                {n.count !== undefined && n.count > 0 && <em>{n.count}</em>}
-              </button>
-            );
-          })}
+          {(() => {
+            const userEmail = (user?.email || "").toLowerCase().trim();
+            const myReviewerApp = reviewerApps.find((a) => a.userEmail.toLowerCase().trim() === userEmail);
+            const isReviewerApproved =
+              user?.role === "reviewer" || user?.role === "editor" || user?.role === "admin" || myReviewerApp?.status === "APPROVED";
+
+            const navItems = [
+              { icon: "⌂", id: "dashboard", label: t.dashboard },
+              { icon: "▤", id: "myArticles", label: t.myArticles, count: articles.length },
+              { icon: "↗", id: "submitArticle", label: t.submitArticle },
+              { icon: "✉", id: "messages", label: t.messages },
+              {
+                icon: "👨‍⚖️",
+                id: "reviewerApp",
+                label: isReviewerApproved ? "Кабинет Рецензента" : "Стать Рецензентом",
+                count: isReviewerApproved ? assignedReviews.filter((r) => r.status !== "COMPLETED").length : 0,
+              },
+              { icon: "⚙", id: "settings", label: t.settings },
+            ];
+
+            return navItems.map((n) => {
+              const isCurrent =
+                activeTab === n.id ||
+                activeTab === n.label ||
+                (activeTab === "Главная" && n.id === "dashboard") ||
+                (activeTab === "Подать статью" && n.id === "submitArticle") ||
+                (activeTab === "Мои статьи" && n.id === "myArticles") ||
+                (activeTab === "Сообщения" && n.id === "messages") ||
+                (activeTab === "Настройки" && n.id === "settings");
+              return (
+                <button className={isCurrent ? "nav-current" : ""} key={n.id} onClick={() => setActiveTab(n.id)}>
+                  <i>{n.icon}</i>
+                  <span>{n.label}</span>
+                  {n.count !== undefined && n.count > 0 && <em>{n.count}</em>}
+                </button>
+              );
+            });
+          })()}
         </div>
       </aside>
 
@@ -573,7 +664,19 @@ export default function AuthorDashboard() {
         <header className="author-head">
           <div>
             <small>{t.authorCabinet}</small>
-            <b>{activeTab === "dashboard" || activeTab === "Главная" ? t.dashboard : activeTab === "myArticles" || activeTab === "Мои статьи" ? t.myArticles : activeTab === "submitArticle" || activeTab === "Подать статью" ? t.submitArticle : activeTab === "messages" || activeTab === "Сообщения" ? t.messages : t.settings}</b>
+            <b>
+              {activeTab === "dashboard" || activeTab === "Главная"
+                ? t.dashboard
+                : activeTab === "myArticles" || activeTab === "Мои статьи"
+                ? t.myArticles
+                : activeTab === "submitArticle" || activeTab === "Подать статью"
+                ? t.submitArticle
+                : activeTab === "messages" || activeTab === "Сообщения"
+                ? t.messages
+                : activeTab === "reviewerApp"
+                ? "Панель Рецензирования"
+                : t.settings}
+            </b>
           </div>
           <label className="dash-search" style={{ position: "relative", display: "flex", alignItems: "center" }}>
             <i>⌕</i>
@@ -1192,8 +1295,250 @@ export default function AuthorDashboard() {
               </form>
             </div>
           )}
+
+          {/* REVIEWER APPLICATION & WORKSPACE TAB */}
+          {activeTab === "reviewerApp" && (
+            <div className="article-panel" style={{ padding: "28px" }}>
+              {(() => {
+                const uEmail = (user?.email || "").toLowerCase().trim();
+                const myApp = reviewerApps.find((a) => a.userEmail.toLowerCase().trim() === uEmail);
+                const isApproved = user?.role === "reviewer" || user?.role === "editor" || user?.role === "admin" || myApp?.status === "APPROVED";
+
+                if (isApproved) {
+                  return (
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", borderBottom: "2px solid #e2e8f0", paddingBottom: "16px" }}>
+                        <div>
+                          <h2 style={{ margin: 0, color: "#0f172a", fontSize: "20px", fontWeight: "800", display: "flex", alignItems: "center", gap: "8px" }}>
+                            👨‍⚖️ Кабинет Рецензента
+                          </h2>
+                          <p style={{ fontSize: "13px", color: "#64748b", margin: "4px 0 0" }}>
+                            Экспертная оценка и рецензирование поступивших научных статей
+                          </p>
+                        </div>
+                        <span style={{ background: "#dcfce7", color: "#166534", padding: "6px 14px", borderRadius: "20px", fontSize: "12px", fontWeight: "800", border: "1px solid #86efac" }}>
+                          ✓ Доступ активен
+                        </span>
+                      </div>
+
+                      {reviewSuccessMsg && (
+                        <div style={{ background: "#f0fdf4", color: "#166534", padding: "12px 16px", borderRadius: "8px", border: "1px solid #bbf7d0", marginBottom: "20px", fontWeight: "700", fontSize: "13px" }}>
+                          {reviewSuccessMsg}
+                        </div>
+                      )}
+
+                      <h3 style={{ fontSize: "15px", fontWeight: "800", color: "#1e293b", marginBottom: "16px" }}>
+                        📋 Назначенные вам статьи для рецензирования ({assignedReviews.length})
+                      </h3>
+
+                      {assignedReviews.length === 0 ? (
+                        <div style={{ background: "#f8fafc", border: "1px dashed #cbd5e1", padding: "40px", borderRadius: "12px", textAlign: "center", color: "#64748b" }}>
+                          <p style={{ margin: 0, fontSize: "14px", fontWeight: "600" }}>На данный момент у вас нет назначенных статей на рецензию.</p>
+                          <small style={{ color: "#94a3b8" }}>Когда редакция передаст вам рукопись, она появится в этом списке.</small>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                          {assignedReviews.map((rev) => (
+                            <div key={rev.id} style={{ background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                                <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>📄 {rev.articleTitle}</h4>
+                                <span style={{ fontSize: "11px", fontWeight: "800", padding: "4px 10px", borderRadius: "6px", background: rev.status === "COMPLETED" ? "#dcfce7" : "#fef3c7", color: rev.status === "COMPLETED" ? "#166534" : "#92400e" }}>
+                                  {rev.status === "COMPLETED" ? "✓ Рецензия завершена" : "⏳ Ожидает рецензии"}
+                                </span>
+                              </div>
+
+                              {rev.note && <p style={{ fontSize: "13px", color: "#475569", background: "#f1f5f9", padding: "10px 14px", borderRadius: "6px", margin: "0 0 16px" }}>💬 <b>Примечание редактора:</b> {rev.note}</p>}
+
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "12px", borderTop: "1px solid #f1f5f9" }}>
+                                <span style={{ fontSize: "12px", color: "#64748b" }}>📅 Дата назначения: {new Date(rev.assignedAt).toLocaleDateString()}</span>
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                  <button
+                                    onClick={() => downloadManuscriptFile({ title: rev.articleTitle })}
+                                    style={{ padding: "8px 16px", background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+                                  >
+                                    📥 Скачать файл рукописи
+                                  </button>
+                                  {rev.status !== "COMPLETED" && (
+                                    <button
+                                      onClick={() => {
+                                        setActiveReviewItem(rev);
+                                        setReviewCommentsAuthor("");
+                                        setReviewCommentsEditor("");
+                                        setReviewRecommendation("ACCEPT");
+                                      }}
+                                      style={{ padding: "8px 18px", background: "#16a34a", color: "#ffffff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "800", cursor: "pointer", boxShadow: "0 2px 6px rgba(22, 163, 74, 0.2)" }}
+                                    >
+                                      ✍️ Провести рецензирование
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                if (myApp?.status === "PENDING") {
+                  return (
+                    <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                      <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
+                      <h2 style={{ margin: "0 0 8px", color: "#0f172a", fontSize: "20px" }}>Ваша заявка находится на рассмотрении!</h2>
+                      <p style={{ fontSize: "14px", color: "#64748b", maxWidth: "480px", margin: "0 auto 20px" }}>
+                        Заявка на предоставление прав рецензента отправлена Главного редактору. Вы получите уведомление сразу после принятия решения.
+                      </p>
+                      <div style={{ display: "inline-block", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: "800" }}>
+                        Статус: На рассмотрении Редакции
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div>
+                    <h2 style={{ margin: "0 0 6px", color: "#0f172a", fontSize: "20px", fontWeight: "800" }}>
+                      📋 Подача заявки на статус Рецензента
+                    </h2>
+                    <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 24px" }}>
+                      Если вы являетесь кандидатом или доктором наук, вы можете подать заявку в Редакцию для получения доступа к экспертной оценке поступающих научных работ.
+                    </p>
+
+                    {appSuccessMsg && (
+                      <div style={{ background: "#f0fdf4", color: "#166534", padding: "12px 16px", borderRadius: "8px", border: "1px solid #bbf7d0", marginBottom: "20px", fontWeight: "700", fontSize: "13px" }}>
+                        {appSuccessMsg}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmitReviewerApp} style={{ display: "flex", flexDirection: "column", gap: "18px", maxWidth: "560px" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                          Научное направление:
+                        </label>
+                        <select
+                          value={appField}
+                          onChange={(e) => setAppField(e.target.value)}
+                          style={{ width: "100%", padding: "10px 14px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }}
+                        >
+                          <option value="Право и правовые исследования">Право и правовые исследования</option>
+                          <option value="Экономика и менеджмент">Экономика и менеджмент</option>
+                          <option value="Педагогика и филология">Педагогика и филология</option>
+                          <option value="Медицина и естественные науки">Медицина и естественные науки</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                          Ученая степень / Должность:
+                        </label>
+                        <select
+                          value={appDegree}
+                          onChange={(e) => setAppDegree(e.target.value)}
+                          style={{ width: "100%", padding: "10px 14px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }}
+                        >
+                          <option value="К.ю.н. / PhD in Law">К.ю.н. / PhD in Law</option>
+                          <option value="Д.ю.н. / DSc">Д.ю.н. / DSc</option>
+                          <option value="Профессор">Профессор</option>
+                          <option value="Доцент">Доцент</option>
+                          <option value="Старший научный сотрудник">Старший научный сотрудник</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                          Организация / Основное место работы:
+                        </label>
+                        <input
+                          value={appInstitution}
+                          onChange={(e) => setAppInstitution(e.target.value)}
+                          placeholder="Например: Ташкентский государственный юридический университет"
+                          required
+                          style={{ width: "100%", padding: "10px 14px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                          Опыт рецензирования / Научные интересы:
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={appExperience}
+                          onChange={(e) => setAppExperience(e.target.value)}
+                          placeholder="Укажите ваши публикации, опыт экспертной оценки или научные интересы..."
+                          required
+                          style={{ width: "100%", padding: "10px 14px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        style={{ padding: "12px 24px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: "800", cursor: "pointer", boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)" }}
+                      >
+                        🚀 Отправить заявку Главным редактору
+                      </button>
+                    </form>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </main>
       </div>
+
+      {/* REVIEW EVALUATION MODAL FOR REVIEWERS */}
+      {activeReviewItem && (
+        <div className="modal-overlay" onClick={() => setActiveReviewItem(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "grid", placeItems: "center" }}>
+          <div className="modal-card wide-modal" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", padding: "24px", borderRadius: "12px", width: "560px", maxWidth: "90vw", maxHeight: "90vh", overflowY: "auto" }}>
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" }}>
+              <h2 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: 0 }}>
+                ✍️ Экспертное заключение по статье
+              </h2>
+              <button className="modal-close" onClick={() => setActiveReviewItem(null)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer" }}>✕</button>
+            </div>
+
+            <form onSubmit={handleSubmitReviewReport} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                  Название рецензируемой рукописи:
+                </label>
+                <input value={activeReviewItem.articleTitle} readOnly style={{ width: "100%", padding: "8px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "13px", fontWeight: "700" }} />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                  Рекомендация Рецензента:
+                </label>
+                <select value={reviewRecommendation} onChange={(e) => setReviewRecommendation(e.target.value as any)} style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px", fontWeight: "700" }}>
+                  <option value="ACCEPT">✓ Принять статью без изменений (Publish as is)</option>
+                  <option value="MINOR_REVISION">✏️ Направить на незначительную доработку (Minor Revision)</option>
+                  <option value="MAJOR_REVISION">⚠️ Направить на существенную переработку (Major Revision)</option>
+                  <option value="REJECT">✕ Отклонить публикацию (Reject)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                  Замечания и рекомендация для Авторa:
+                </label>
+                <textarea rows={4} value={reviewCommentsAuthor} onChange={(e) => setReviewCommentsAuthor(e.target.value)} required placeholder="Опишите сильные и слабые стороны работы, рекомендация по улучшению..." style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }} />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", marginBottom: "4px", color: "#334155" }}>
+                  Конфиденциальный комментарий для Редакции:
+                </label>
+                <textarea rows={2} value={reviewCommentsEditor} onChange={(e) => setReviewCommentsEditor(e.target.value)} placeholder="Скрытое примечание только для Главного редактора..." style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }} />
+              </div>
+
+              <button type="submit" style={{ padding: "12px 24px", background: "#16a34a", color: "#ffffff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: "800", cursor: "pointer", boxShadow: "0 4px 12px rgba(22, 163, 74, 0.2)" }}>
+                🚀 Отправить заключение Редакции
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* EDIT / RESUBMIT MODAL FOR DRAFTS & REVISIONS */}
       {showEditModal && editingArticle && (

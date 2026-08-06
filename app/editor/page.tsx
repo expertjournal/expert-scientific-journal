@@ -22,6 +22,9 @@ import {
   searchArticlesInStore,
   assignReviewerToArticle,
   addNotificationToStore,
+  getStoredReviewerApplications,
+  updateReviewerApplicationStatus,
+  StoredReviewerApplication,
 } from "@/lib/articles-store";
 import { useSupabaseRealtime } from "@/lib/supabase-realtime";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -205,17 +208,29 @@ export default function EditorDashboard() {
     loadEditorData();
   };
 
-  // Messages & Author Filter & Issue Assignment State
+  // Reviewer Applications & Messages State
+  const [reviewerApps, setReviewerApps] = useState<StoredReviewerApplication[]>([]);
   const [messagesList, setMessagesList] = useState<StoredMessage[]>([]);
   const [chatMessage, setChatMessage] = useState("");
   const [selectedAuthorEmail, setSelectedAuthorEmail] = useState<string>("all");
   const [selectedIssuesMap, setSelectedIssuesMap] = useState<Record<string, string>>({});
   const [reviewerSearchQuery, setReviewerSearchQuery] = useState("");
 
+  const handleApproveReviewerApp = (appId: string) => {
+    updateReviewerApplicationStatus(appId, "APPROVED");
+    setReviewerApps(getStoredReviewerApplications());
+  };
+
+  const handleRejectReviewerApp = (appId: string) => {
+    updateReviewerApplicationStatus(appId, "REJECTED");
+    setReviewerApps(getStoredReviewerApplications());
+  };
+
   const loadEditorData = useCallback(async () => {
     try {
       setFetching(true);
       await syncStoreWithServer();
+      setReviewerApps(getStoredReviewerApplications());
       const storedArticles = getStoredArticles();
       const loadedSubmitted: ApiArticle[] = storedArticles.map((a) => ({
         id: a.id,
@@ -1435,6 +1450,109 @@ export default function EditorDashboard() {
 
           {activeTab === "Пользователи" && (
             <section className="article-panel" style={{ padding: "24px" }}>
+              {/* REVIEWER APPLICATIONS SECTION */}
+              <div style={{ marginBottom: "32px", background: "#f8fafc", padding: "20px", borderRadius: "12px", border: "1px solid #cbd5e1" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
+                      ⚖️ Заявки на получение статуса Рецензента ({reviewerApps.length})
+                    </h3>
+                    <p style={{ fontSize: "12px", color: "#64748b", margin: "2px 0 0" }}>Запросы от авторов и исследователей на предоставление прав рецензирования рукописей</p>
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: "800", background: "#dbeafe", color: "#1e40af", padding: "4px 10px", borderRadius: "6px" }}>
+                    Ожидают решения: {reviewerApps.filter((a) => a.status === "PENDING").length}
+                  </span>
+                </div>
+
+                {reviewerApps.length === 0 ? (
+                  <div style={{ background: "#ffffff", padding: "20px", borderRadius: "8px", border: "1px dashed #cbd5e1", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
+                    Заявок на статус Рецензента пока нет.
+                  </div>
+                ) : (
+                  <div style={{ background: "#ffffff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", textAlign: "left" }}>
+                      <thead>
+                        <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #cbd5e1", color: "#334155" }}>
+                          <th style={{ padding: "10px 14px" }}>Соискатель (ФИО / Email)</th>
+                          <th style={{ padding: "10px 14px" }}>Направление / Ученая степень</th>
+                          <th style={{ padding: "10px 14px" }}>Организация</th>
+                          <th style={{ padding: "10px 14px" }}>Опыт / Описание</th>
+                          <th style={{ padding: "10px 14px" }}>Статус</th>
+                          <th style={{ padding: "10px 14px", textAlign: "right" }}>Действия Редактора</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reviewerApps.map((app) => (
+                          <tr key={app.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "10px 14px" }}>
+                              <b style={{ color: "#0f172a", display: "block" }}>👤 {app.userName}</b>
+                              <small style={{ color: "#64748b" }}>{app.userEmail}</small>
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>
+                              <span style={{ fontWeight: "700", color: "#2563eb", display: "block" }}>{app.scientificField}</span>
+                              <span style={{ fontSize: "11px", color: "#475569" }}>🎓 {app.degree}</span>
+                            </td>
+                            <td style={{ padding: "10px 14px", color: "#334155" }}>🏫 {app.institution}</td>
+                            <td style={{ padding: "10px 14px", color: "#475569", maxWidth: "200px" }}>{app.experience || "—"}</td>
+                            <td style={{ padding: "10px 14px" }}>
+                              {app.status === "PENDING" && (
+                                <span style={{ fontSize: "11px", fontWeight: "800", background: "#fef3c7", color: "#92400e", padding: "3px 8px", borderRadius: "6px" }}>
+                                  ⏳ На рассмотрении
+                                </span>
+                              )}
+                              {app.status === "APPROVED" && (
+                                <span style={{ fontSize: "11px", fontWeight: "800", background: "#dcfce7", color: "#166534", padding: "3px 8px", borderRadius: "6px" }}>
+                                  ✓ Доступ предоставлен
+                                </span>
+                              )}
+                              {app.status === "REJECTED" && (
+                                <span style={{ fontSize: "11px", fontWeight: "800", background: "#fee2e2", color: "#991b1b", padding: "3px 8px", borderRadius: "6px" }}>
+                                  ✕ Отклонено
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                              {app.status === "PENDING" && (
+                                <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                                  <button
+                                    onClick={() => handleApproveReviewerApp(app.id)}
+                                    style={{ padding: "6px 12px", background: "#16a34a", color: "#ffffff", border: "none", borderRadius: "6px", fontSize: "11px", fontWeight: "800", cursor: "pointer" }}
+                                  >
+                                    ✓ Одобрить
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectReviewerApp(app.id)}
+                                    style={{ padding: "6px 12px", background: "#ef4444", color: "#ffffff", border: "none", borderRadius: "6px", fontSize: "11px", fontWeight: "800", cursor: "pointer" }}
+                                  >
+                                    ✕ Отклонить
+                                  </button>
+                                </div>
+                              )}
+                              {app.status === "APPROVED" && (
+                                <button
+                                  onClick={() => handleRejectReviewerApp(app.id)}
+                                  style={{ padding: "4px 8px", background: "#f1f5f9", color: "#64748b", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "10px", cursor: "pointer" }}
+                                >
+                                  Отозвать доступ
+                                </button>
+                              )}
+                              {app.status === "REJECTED" && (
+                                <button
+                                  onClick={() => handleApproveReviewerApp(app.id)}
+                                  style={{ padding: "4px 8px", background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: "6px", fontSize: "10px", cursor: "pointer" }}
+                                >
+                                  Одобрить повторно
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <div>
                   <h2 style={{ margin: 0 }}>Реестр пользователей системы ({systemUsers.length})</h2>

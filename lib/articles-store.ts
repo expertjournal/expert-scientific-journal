@@ -59,10 +59,23 @@ export interface StoredNotification {
   createdAt: string;
 }
 
+export interface StoredReviewerApplication {
+  id: string;
+  userEmail: string;
+  userName: string;
+  scientificField: string;
+  degree: string;
+  institution: string;
+  experience: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt: string;
+}
+
 const ARTICLES_KEY = "expert_shared_cloud_articles_v10_prod_clean";
 const ISSUES_KEY = "expert_shared_cloud_issues_v10_prod_clean";
 const MESSAGES_KEY = "expert_shared_cloud_messages_v10_prod_clean";
 const NOTIFICATIONS_KEY = "expert_shared_cloud_notifications_v10_prod_clean";
+const REVIEWER_APPS_KEY = "expert_shared_cloud_reviewer_apps_v1";
 
 export function clearAllClientCaches() {
   if (typeof window === "undefined") return;
@@ -743,4 +756,66 @@ startxref
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// REVIEWER APPLICATIONS STORE
+export function getStoredReviewerApplications(): StoredReviewerApplication[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(REVIEWER_APPS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [];
+}
+
+export function saveStoredReviewerApplications(apps: StoredReviewerApplication[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(REVIEWER_APPS_KEY, JSON.stringify(apps));
+  } catch (e) {}
+}
+
+export function addReviewerApplication(app: StoredReviewerApplication): StoredReviewerApplication[] {
+  const current = getStoredReviewerApplications();
+  const updated = [app, ...current.filter((a) => a.id !== app.id && a.userEmail !== app.userEmail)];
+  saveStoredReviewerApplications(updated);
+
+  addNotificationToStore({
+    id: "n-app-" + Date.now(),
+    userRole: "editor",
+    title: "📋 Новая заявка на статус Рецензента",
+    message: `${app.userName} (${app.userEmail}) подал заявку на право рецензирования по направлению "${app.scientificField}".`,
+    isRead: false,
+    type: "submission",
+    createdAt: new Date().toISOString(),
+  });
+
+  return updated;
+}
+
+export function updateReviewerApplicationStatus(appId: string, status: "APPROVED" | "REJECTED"): StoredReviewerApplication[] {
+  const current = getStoredReviewerApplications();
+  const updated = current.map((a) => (a.id === appId ? { ...a, status } : a));
+  saveStoredReviewerApplications(updated);
+
+  const targetApp = updated.find((a) => a.id === appId);
+  if (targetApp) {
+    addNotificationToStore({
+      id: "n-app-st-" + Date.now(),
+      userRole: "all",
+      title: status === "APPROVED" ? "🎉 Доступ Рецензента одобрен!" : "❌ Статус заявки Рецензента",
+      message:
+        status === "APPROVED"
+          ? `Главный редактор одобрил вашу заявку на статус Рецензента. Раздел рецензирования теперь доступен в вашем кабинете!`
+          : `К сожалению, ваша заявка на статус Рецензента была отклонена.`,
+      isRead: false,
+      type: "status",
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return updated;
 }
