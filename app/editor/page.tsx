@@ -353,9 +353,9 @@ export default function EditorDashboard() {
   const openCreateIssueModal = () => {
     setEditingIssueId(null);
     setIssueNumber((issues.length + 1).toString());
-    setIssueJournalTitle(issues[0]?.journalTitle || "Expert Scientific Journal");
+    setIssueJournalTitle("");
     setIssueYear("2026");
-    setIssueDesc(`Официальный выпуск №${issues.length + 1} (2026)`);
+    setIssueDesc(`Выпуск №${issues.length + 1} (2026)`);
     setIssueCoverUrl("");
     setScheduledPublishDate("");
     setShowIssueModal(true);
@@ -364,7 +364,7 @@ export default function EditorDashboard() {
   const openEditIssueModal = (iss: ApiIssue) => {
     setEditingIssueId(iss.id);
     setIssueNumber(iss.number.toString());
-    setIssueJournalTitle(iss.journalTitle || "Expert Scientific Journal");
+    setIssueJournalTitle(iss.journalTitle || "");
     setIssueYear(iss.year.toString());
     setIssueDesc(iss.description || "");
     setIssueCoverUrl(iss.coverUrl || "");
@@ -384,7 +384,7 @@ export default function EditorDashboard() {
       if (isNaN(num) || isNaN(yr)) return;
 
       const issueStatus = scheduledPublishDate ? ("SCHEDULED" as const) : ("DRAFT" as const);
-      const savedTitle = issueJournalTitle.trim() || "Expert Scientific Journal";
+      const savedTitle = issueJournalTitle.trim();
 
       if (editingIssueId) {
         updateIssueInStore(editingIssueId, {
@@ -591,11 +591,11 @@ export default function EditorDashboard() {
                 <input value={issueNumber} onChange={(e) => setIssueNumber(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #ccc", marginTop: "4px" }} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", fontWeight: "bold" }}>Название журнала (Jurnal nomi):</label>
+                <label style={{ fontSize: "11px", fontWeight: "bold" }}>Тема / Название выпуска (Issue Title / Theme):</label>
                 <input
                   value={issueJournalTitle}
                   onChange={(e) => setIssueJournalTitle(e.target.value)}
-                  placeholder="Например: Expert Scientific Journal"
+                  placeholder="Например: Специальный выпуск: Искусственный интеллект и право"
                   style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #ccc", marginTop: "4px" }}
                 />
               </div>
